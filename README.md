@@ -43,7 +43,7 @@ Our SDK now includes a default initialization method that allows for quick gener
 ```typescript
 import { initMagmaSDK } from '@magmaprotocol/magma-clmm-sdk'
 
-const magmaClmmSDK = initMagmaSDK({network: 'mainnet})
+const magmaClmmSDK = initMagmaSDK({network: 'mainnet'})
 ```
 
 If you wish to set your own full node URL and simulate address, you can do so as follows:
