@@ -4,6 +4,7 @@ import { PositionModule } from './modules/positionModule'
 import { RewarderModule } from './modules/rewarderModule'
 import { RouterModule } from './modules/routerModule'
 import { SwapModule } from './modules/swapModule'
+import { LockModule } from './modules/lockModule'
 import { TokenModule } from './modules/tokenModule'
 import { RouterModuleV2 } from './modules/routerModuleV2'
 import { CachedContent, cacheTime24h, extractStructTagFromType, getFutureTime, patchFixSuiObjectId } from './utils'
@@ -108,6 +109,11 @@ export class MagmaClmmSDK {
   protected _swap: SwapModule
 
   /**
+   * Provide interact with a lock interface.
+   */
+  protected _lock: LockModule
+
+  /**
    * Provide interact  with a position rewarder interface.
    */
   protected _rewarder: RewarderModule
@@ -150,6 +156,7 @@ export class MagmaClmmSDK {
     })
 
     this._swap = new SwapModule(this)
+    this._lock = new LockModule(this)
     this._pool = new PoolModule(this)
     this._position = new PositionModule(this)
     this._rewarder = new RewarderModule(this)
@@ -183,6 +190,11 @@ export class MagmaClmmSDK {
    */
   get Swap(): SwapModule {
     return this._swap
+  }
+
+  /* */
+  get Lock(): LockModule {
+    return this._lock
   }
 
   /**

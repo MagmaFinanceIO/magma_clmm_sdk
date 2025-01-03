@@ -31,6 +31,7 @@ export const ClmmIntegrateRouterWithPartnerModule = 'router_with_partner'
 export const ClmmFetcherModule = 'fetcher_script'
 export const ClmmExpectSwapModule = 'expect_swap'
 export const ClmmIntegrateUtilsModule = 'utils'
+export const VotingEscrow = 'voting_escrow'
 
 /**
  * The address for CoinInfo module.

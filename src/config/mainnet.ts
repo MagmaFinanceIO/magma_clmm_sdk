@@ -17,6 +17,10 @@ const SDKConfig = {
     coin_list_handle: '0x49136005e90e28c4695419ed4194cc240603f1ea8eb84e62275eaff088a71063',
     launchpad_pools_handle: '0x5e194a8efcf653830daf85a85b52e3ae8f65dc39481d54b2382acda25068375c',
     clmm_pools_handle: '0x37f60eb2d9d227949b95da8fea810db3c32d1e1fa8ed87434fc51664f87d83cb',
+
+    voter_id: '',
+    voting_escrow_id: '',
+    magma_token: '',
   },
 }
 

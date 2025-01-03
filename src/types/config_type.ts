@@ -1,4 +1,4 @@
-import { SuiObjectIdType } from './sui'
+import { SuiAddressType, SuiObjectIdType } from './sui'
 
 /**
  * Represents configurations specific to the Magma protocol.
@@ -43,6 +43,15 @@ export type MagmaConfigs = {
    * The object identifier of the global configuration.
    */
   global_config_id: SuiObjectIdType
+
+  voter_id: SuiObjectIdType
+
+  /**
+   * The object identifier of voting escrow
+   */
+  voting_escrow_id: SuiObjectIdType
+
+  magma_token: SuiAddressType
 }
 
 /**
