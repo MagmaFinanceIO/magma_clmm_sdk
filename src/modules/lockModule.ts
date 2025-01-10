@@ -192,4 +192,20 @@ type LockInfo = {
   start: string
   end: string
   permanent: boolean
+
+  rebase_amount: Coin
+  voting_power: string
+  voting_rewards: Coin[]
+}
+
+type Coin = {
+  kind?: CoinType
+  token_addr: string
+  amount: string
+}
+
+enum CoinType {
+  Coin = 'coin',
+  Fee = 'fee',
+  Incentive = 'incentive',
 }

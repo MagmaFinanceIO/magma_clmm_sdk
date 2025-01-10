@@ -104,14 +104,14 @@ async function run_test() {
 
   console.log('getPosition #####: ', res)
 
-  // // 10. claimVotingRewards
-  // const claimVotingRewardsPayload = await magmaClmmSDK.Lock.claimVotingRewardsPayload({
-  //   coinAType: SuiAddressType
-  //   coinBType: SuiAddressType
-  //   locks: SuiObjectIdType[]
-  // })
-  // const claimVotingRewardsTxn = await magmaClmmSDK.fullClient.sendTransaction(sendKeypair, claimVotingRewardsPayload)
-  // console.log('claimVotingRewardsTxn #####: ', claimVotingRewardsTxn)
+  // 10. claimVotingRewards
+  const claimVotingRewardsPayload = await magmaClmmSDK.Lock.claimVotingRewardsPayload({
+    coinAType: SuiAddressType
+    coinBType: SuiAddressType
+    locks: SuiObjectIdType[]
+  })
+  const claimVotingRewardsTxn = await magmaClmmSDK.fullClient.sendTransaction(sendKeypair, claimVotingRewardsPayload)
+  console.log('claimVotingRewardsTxn #####: ', claimVotingRewardsTxn)
 
   // 11. claimAndLockRebases
   const claimAndLockRebasesPayload = await magmaClmmSDK.Lock.claimAndLockRebasesPayload({
