@@ -7,7 +7,11 @@ import {
   IncreaseUnlockTimeParams,
   LockPermanentParams,
   VoteParams,
+  ClaimFeesParams as ClaimVotingRewardsParams,
+  ClaimAndLockParams,
+  PokeParams,
 } from 'src/types'
+import { getPackagerConfigs } from '../types'
 import { IModule } from '../interfaces/IModule'
 import { MagmaClmmSDK } from '../sdk'
 import { TransactionUtil } from '../utils/transaction-util'
@@ -23,7 +27,7 @@ export class LockModule implements IModule {
     return this._sdk
   }
 
-  async createCreateLockTransactionPayload(params: CreateLockParams): Promise<Transaction> {
+  async createLockTransactionPayload(params: CreateLockParams): Promise<Transaction> {
     if (this._sdk.senderAddress.length === 0) {
       throw Error('this config sdk senderAddress is empty')
     }
@@ -75,16 +79,14 @@ export class LockModule implements IModule {
     return TransactionUtil.buildLockPermanentTransaction(this.sdk, params)
   }
 
-  // /// Vote for gauges
-  // public fun vote<T>(
-  //     self: &mut Voter<T>,
-  //     ve: &mut VotingEscrow<T>,
-  //     lock: &Lock,
-  //     pools: vector<ID>,
-  //     weights: vector<u64>,
-  //     clock: &Clock,
-  //     ctx: &mut TxContext
-  // )
+  async unlockPermanentPayload(params: LockPermanentParams): Promise<Transaction> {
+    if (this._sdk.senderAddress.length === 0) {
+      throw Error('this config sdk senderAddress is empty')
+    }
+
+    return TransactionUtil.buildUnlockPermanentTransaction(this.sdk, params)
+  }
+
   async votePayload(params: VoteParams): Promise<Transaction> {
     if (this._sdk.senderAddress.length === 0) {
       throw Error('this config sdk senderAddress is empty')
@@ -92,4 +94,102 @@ export class LockModule implements IModule {
 
     return TransactionUtil.buildVoteTransaction(this.sdk, params)
   }
+
+  // public fun claim_fees<T, B>(self: &mut Voter<T>, ve: &mut VotingEscrow<T>, mut locks: vector<Lock>, clock: &Clock, ctx: &mut TxContext) {
+  async claimVotingRewardsPayload(params: ClaimVotingRewardsParams): Promise<Transaction> {
+    if (this._sdk.senderAddress.length === 0) {
+      throw Error('this config sdk senderAddress is empty')
+    }
+
+    return TransactionUtil.buildClaimVotingRewardsTransaction(this.sdk, params)
+  }
+
+  async claimAndLockRebasesPayload(params: ClaimAndLockParams): Promise<Transaction> {
+    if (this._sdk.senderAddress.length === 0) {
+      throw Error('this config sdk senderAddress is empty')
+    }
+    return TransactionUtil.buildClaimAndLockRebases(this.sdk, params)
+  }
+
+  async pokePayload(params: PokeParams): Promise<Transaction> {
+    if (this._sdk.senderAddress.length === 0) {
+      throw Error('this config sdk senderAddress is empty')
+    }
+    return TransactionUtil.buildPoke(this.sdk, params)
+  }
+
+  async locksOfUser(user: string): Promise<LocksInfo> {
+    const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
+    const { distribution_package_id } = getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+
+    // all objects
+    const ownerRes = await this._sdk.fullClient.getOwnedObjectsByPage(user, {
+      options: { showType: true, showContent: true, showDisplay: true, showOwner: true },
+      filter: {
+        MatchAll: [{ Package: distribution_package_id }, { StructType: `${distribution_package_id}::voting_escrow::Lock` }],
+      },
+    })
+
+    for (const item of ownerRes.data as any[]) {
+      const { fields } = item.data.content
+      locksInfo.lockInfo.push({
+        lock_id: fields.id.id,
+        amount: fields.amount,
+        start: fields.start,
+        end: fields.end,
+        permanent: fields.permanent,
+      })
+    }
+    return locksInfo
+  }
+
+  // // FIXME: SuiEventFilter `And` or `All` not working
+  // async locksOfUser(user: string): Promise<LocksInfo> {
+  //   const { distribution_package_id } = getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+
+  //   const ids: SuiObjectIdType[] = []
+  //   const eventFilter: SuiEventFilter = {
+  //     MoveEventType: `${distribution_package_id}::voting_escrow::EventCreateLock`,
+  //   }
+
+  //   // 1. Fetch create locks events
+  //   const events = await this._sdk.fullClient.queryEventsByPage(eventFilter)
+
+  //   events.data.forEach((event) => {
+  //     const fields = event.parsedJson
+  //     if (fields && fields.owner === user) {
+  //       ids.push(fields.lock_id)
+  //     }
+  //   })
+
+  //   const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
+  //   const objects = await this._sdk.fullClient.batchGetObjects(ids, { showContent: true })
+
+  //   objects.forEach((object) => {
+  //     if ('data' in object) {
+  //       const fields = getObjectFields(object)
+  //       locksInfo.lockInfo.push({
+  //         lock_id: fields.id.id,
+  //         amount: fields.amount,
+  //         start: fields.start,
+  //         end: fields.end,
+  //         permanent: fields.permanent,
+  //       })
+  //     }
+  //   })
+  //   return locksInfo
+  // }
+}
+
+type LocksInfo = {
+  owner: string
+  lockInfo: LockInfo[]
+}
+
+type LockInfo = {
+  lock_id: string
+  amount: string
+  start: string
+  end: string
+  permanent: boolean
 }

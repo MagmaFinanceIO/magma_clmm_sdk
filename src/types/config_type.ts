@@ -52,6 +52,10 @@ export type MagmaConfigs = {
   voting_escrow_id: SuiObjectIdType
 
   magma_token: SuiAddressType
+
+  reward_distributor_id: SuiObjectIdType
+
+  distribution_package_id: SuiObjectIdType
 }
 
 /**

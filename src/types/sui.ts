@@ -32,6 +32,8 @@ export const ClmmFetcherModule = 'fetcher_script'
 export const ClmmExpectSwapModule = 'expect_swap'
 export const ClmmIntegrateUtilsModule = 'utils'
 export const VotingEscrow = 'voting_escrow'
+export const Voter = 'voter'
+export const RewardDistributor = 'reward_distributor'
 
 /**
  * The address for CoinInfo module.

@@ -1,46 +1,26 @@
 import { SuiAddressType, SuiObjectIdType } from './sui'
 
-// self: &mut VotingEscrow<T>,
-// coin: Coin<T>,
-// lock_duration: u64,
-// permanent: bool,
-// clock: &Clock, Use CLOCK_ADDRESS
-// ctx: &mut TxContext
-
 export type CreateLockParams = {
-  // &mut VotingEscrow<T>, // T should be MagmaToken
-
-  /**
-   * The address type of the coin.
-   */
-  coinType: SuiAddressType
-
   /**
    * The swap amount.
    */
   amount: string
 
   /**
-   * How long the lock will last.
+   * How long the lock will last. Should be in range [MIN_LOCK_TIME, MAX_LOCK_TIME]
+   MAX_LOCK_TIME: u64 = 4 * 52 * WEEK;
+   MIN_LOCK_TIME: u64 = WEEK;
    */
-  lock_duration: number
+  lockDurationDays: number
 
   /**
    * If the lock is permanent.
    */
   permanent: boolean
-
-  // clock: &Clock, Use CLOCK_ADDRESS
 }
 
-// increase_amount<T>(self: &mut VotingEscrow<T>, lock: &mut Lock, coin_t: Coin<T>, clock: &Clock, ctx: &mut TxContext)
 export type IncreaseLockAmountParams = {
-  lock_id: SuiObjectIdType
-
-  /**
-   * The address type of the coin.
-   */
-  coinType: SuiAddressType
+  lockId: SuiObjectIdType
 
   /**
    * The swap amount.
@@ -48,49 +28,58 @@ export type IncreaseLockAmountParams = {
   amount: string
 }
 
-// public fun merge<T>(self: &mut VotingEscrow<T>, from_lock: Lock, to_lock: &mut Lock, clock: &Clock, ctx: &mut TxContext) {
 export type MergeLockParams = {
-  from_lock_id: SuiObjectIdType
+  fromLockId: SuiObjectIdType
 
-  to_lock_id: SuiObjectIdType
+  toLockId: SuiObjectIdType
 }
 
-// public fun transfer<T>(lock: Lock, ve: &mut VotingEscrow<T>, to: address, clock: &Clock, ctx: &mut TxContext) {
 export type TransferLockParams = {
-  lock_id: SuiObjectIdType
+  lockId: SuiObjectIdType
 
   to: string
 }
 
-// public fun increase_unlock_time<T>(self: &mut VotingEscrow<T>, lock: &mut Lock, lock_duration: u64, clock: &Clock, ctx: &mut TxContext) {
 export type IncreaseUnlockTimeParams = {
-  lock_id: SuiObjectIdType
+  lockId: SuiObjectIdType
 
   /**
-   * How long the lock will last.
+   * Timestamp when the lock will end.
+   * Used for calc new lock duration
    */
-  lock_duration: number
+  newLockEndAt: number
 }
 
-// public fun lock_permanent<T>(self: &mut VotingEscrow<T>, lock: &mut Lock, clock: &Clock, ctx: &mut TxContext) {
 export type LockPermanentParams = {
-  lock_id: SuiObjectIdType
+  lockId: SuiObjectIdType
 }
 
-// /// Vote for gauges
-// public fun vote<T>(
-//     self: &mut Voter<T>,
-//     ve: &mut VotingEscrow<T>,
-//     lock: &Lock,
-//     pools: vector<ID>,
-//     weights: vector<u64>,
-//     clock: &Clock,
-//     ctx: &mut TxContext
-// )
 export type VoteParams = {
-  lock_id: SuiObjectIdType
+  lockId: SuiObjectIdType
 
   pools: SuiObjectIdType[]
 
   weights: number[]
+}
+
+export type ClaimFeesParams = {
+  /**
+   * The address type of the coin A.
+   */
+  coinAType: SuiAddressType
+
+  /**
+   * The address type of the coin A.
+   */
+  coinBType: SuiAddressType
+
+  locks: SuiObjectIdType[]
+}
+
+export type ClaimAndLockParams = {
+  lockId: SuiObjectIdType
+}
+
+export type PokeParams = {
+  lockId: SuiObjectIdType
 }

@@ -18,9 +18,12 @@ const SDKConfig = {
     launchpad_pools_handle: '0x5e194a8efcf653830daf85a85b52e3ae8f65dc39481d54b2382acda25068375c',
     clmm_pools_handle: '0x37f60eb2d9d227949b95da8fea810db3c32d1e1fa8ed87434fc51664f87d83cb',
 
-    voter_id: '',
-    voting_escrow_id: '',
-    magma_token: '',
+    voter_id: '0xcebea372de09bba70be2f0a94b7576775777cdaf82dca74deb2f0b3cb18d7768',
+    voting_escrow_id: '0x65a5f4a946abefad3bb322a652706b4a7c40cf1121abd7c5e8d7921f329f5a81',
+    reward_distributor_id: '0x089e2ff3dde937043d96e3bd935624c39766b955cbe36b6d04403ee03979d9b2',
+    magma_token: '0xb58850921a2c438ba02213c6bba741ed6133094a0f5c08a8164b9194fa212229::magma_token::MAGMA_TOKEN',
+
+    distribution_package_id: '0xb58850921a2c438ba02213c6bba741ed6133094a0f5c08a8164b9194fa212229',
   },
 }
 
@@ -37,12 +40,12 @@ export const clmmMainnet: SdkOptions = {
   },
   clmm_pool: {
     package_id: '0x1eabed72c53feb3805120a081dc15963c204dc8d091542592abaf7a35689b2fb',
-    published_at: '0xdc67d6de3f00051c505da10d8f6fbab3b3ec21ec65f0dc22a2f36c13fc102110',
+    published_at: '0xd8790c43d67c7cd00a100c9136345bd67ede81df1ea46a09b5b1b3c828254e62',
     config: SDKConfig.clmmConfig,
   },
   integrate: {
-    package_id: '0x996c4d9480708fb8b92aa7acf819fb0497b5ec8e65ba06601cae2fb6db3312c3',
-    published_at: '0x3a5aa90ffa33d09100d7b6941ea1c0ffe6ab66e77062ddd26320c1b073aabb10',
+    package_id: '0x5cc04c369e79b84bb7544280adb89bb65b2dbcd6d3fc9e415a3a76b66efad1f5',
+    published_at: '0xb8b52590ff99fe27141aea7929d185e45c5e7f85ae3a2eaaab218d679d2da885',
   },
   deepbook: {
     package_id: '0x000000000000000000000000000000000000000000000000000000000000dee9',

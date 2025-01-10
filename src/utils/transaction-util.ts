@@ -5,11 +5,14 @@ import { CoinAssist } from '../math/CoinAssist'
 import { OnePath, SwapWithRouterParams } from '../modules/routerModule'
 import { TickData } from '../types/clmmpool'
 import {
+  ClaimAndLockParams,
+  ClaimFeesParams,
   CreateLockParams,
   IncreaseLockAmountParams,
   IncreaseUnlockTimeParams,
   LockPermanentParams,
   MergeLockParams,
+  PokeParams,
   TransferLockParams,
   VoteParams,
 } from '../types/lock_type'
@@ -20,6 +23,8 @@ import {
   ClmmIntegrateUtilsModule,
   CLOCK_ADDRESS,
   VotingEscrow,
+  Voter,
+  RewardDistributor,
 } from '../types/sui'
 import SDK, {
   AddLiquidityFixTokenParams,
@@ -554,7 +559,9 @@ export class TransactionUtil {
   static buildCreateLockTransaction(sdk: SDK, params: CreateLockParams, allCoinAsset: CoinAsset[]): Transaction {
     let tx = new Transaction()
     tx.setSender(sdk.senderAddress)
-    const lockCoinInput = TransactionUtil.buildCoinForAmount(tx, allCoinAsset, BigInt(params.amount), params.coinType, true)
+
+    const { magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const lockCoinInput = TransactionUtil.buildCoinForAmount(tx, allCoinAsset, BigInt(params.amount), magma_token, false, true)
     tx = TransactionUtil.buildCreateTransactionArgs(tx, params, sdk.sdkOptions, lockCoinInput)
     return tx
   }
@@ -570,11 +577,11 @@ export class TransactionUtil {
     const typeArguments = [magma_token]
 
     const functionName = 'create_lock'
-
+    const coins = tx.makeMoveVec({ elements: [lockCoinInput.targetCoin] })
     const args = [
       tx.object(voting_escrow_id),
-      lockCoinInput.targetCoin,
-      tx.pure.u64(params.lock_duration),
+      coins,
+      tx.pure.u64(params.lockDurationDays),
       tx.pure.bool(params.permanent),
       tx.object(CLOCK_ADDRESS),
     ]
@@ -588,9 +595,12 @@ export class TransactionUtil {
   }
 
   static buildIncreaseLockAmountTransaction(sdk: SDK, params: IncreaseLockAmountParams, allCoinAsset: CoinAsset[]): Transaction {
+    const { magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+
     let tx = new Transaction()
     tx.setSender(sdk.senderAddress)
-    const lockCoinInput = TransactionUtil.buildCoinForAmount(tx, allCoinAsset, BigInt(params.amount), params.coinType, true)
+    const lockCoinInput = TransactionUtil.buildCoinForAmount(tx, allCoinAsset, BigInt(params.amount), magma_token, true, false)
+
     tx = TransactionUtil.buildIncreaseLockAmountTransactionArgs(tx, params, sdk.sdkOptions, lockCoinInput)
     return tx
   }
@@ -605,10 +615,9 @@ export class TransactionUtil {
     const { voting_escrow_id, magma_token } = getPackagerConfigs(sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
-    const functionName = 'increase_amount'
+    const functionName = 'increase_amount_single_coin'
 
-    const args = [tx.object(voting_escrow_id), tx.object(params.lock_id), increaseCoinInput.targetCoin, tx.object(CLOCK_ADDRESS)]
-
+    const args = [tx.object(voting_escrow_id), tx.object(params.lockId), increaseCoinInput.targetCoin, tx.object(CLOCK_ADDRESS)]
     tx.moveCall({
       target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
       typeArguments,
@@ -626,10 +635,9 @@ export class TransactionUtil {
     const { voting_escrow_id, magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
-    const functionName = 'merge'
+    const functionName = 'merge_locks'
 
-    const args = [tx.object(voting_escrow_id), tx.object(params.from_lock_id), tx.object(params.to_lock_id), tx.object(CLOCK_ADDRESS)]
-
+    const args = [tx.object(voting_escrow_id), tx.object(params.fromLockId), tx.object(params.toLockId), tx.object(CLOCK_ADDRESS)]
     tx.moveCall({
       target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
       typeArguments,
@@ -649,8 +657,7 @@ export class TransactionUtil {
 
     const functionName = 'transfer'
 
-    const args = [tx.object(params.lock_id), tx.object(voting_escrow_id), tx.object(params.to), tx.object(CLOCK_ADDRESS)]
-
+    const args = [tx.object(voting_escrow_id), tx.object(params.lockId), tx.object(params.to), tx.object(CLOCK_ADDRESS)]
     tx.moveCall({
       target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
       typeArguments,
@@ -664,13 +671,15 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
+    const oneDay = 24 * 60 * 60
+    const newLockDuration = Math.ceil((params.newLockEndAt - Date.now()) / oneDay)
+
     const { integrate } = sdk.sdkOptions
     const { voting_escrow_id, magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
     const functionName = 'increase_unlock_time'
-
-    const args = [tx.object(voting_escrow_id), tx.object(params.lock_id), tx.pure.u64(params.lock_duration), tx.object(CLOCK_ADDRESS)]
+    const args = [tx.object(voting_escrow_id), tx.object(params.lockId), tx.pure.u64(newLockDuration), tx.object(CLOCK_ADDRESS)]
 
     tx.moveCall({
       target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
@@ -691,7 +700,27 @@ export class TransactionUtil {
 
     const functionName = 'lock_permanent'
 
-    const args = [tx.object(voting_escrow_id), tx.object(params.lock_id), tx.object(CLOCK_ADDRESS)]
+    const args = [tx.object(voting_escrow_id), tx.object(params.lockId), tx.object(CLOCK_ADDRESS)]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  static buildUnlockPermanentTransaction(sdk: SDK, params: LockPermanentParams): Transaction {
+    const tx = new Transaction()
+    tx.setSender(sdk.senderAddress)
+
+    const { integrate } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const functionName = 'unlock_permanent'
+
+    const args = [tx.object(voting_escrow_id), tx.object(params.lockId), tx.object(CLOCK_ADDRESS)]
 
     tx.moveCall({
       target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
@@ -711,18 +740,81 @@ export class TransactionUtil {
 
     const functionName = 'vote'
 
-    const pools = tx.makeMoveVec({
-      elements: params.pools.map((pool) => tx.object(pool)),
-      type: 'object',
-    })
     const weights = tx.makeMoveVec({
       elements: params.weights.map((weight) => tx.pure.u64(weight)),
       type: 'u64',
     })
 
-    const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(params.lock_id), pools, weights, tx.object(CLOCK_ADDRESS)]
+    const pools = tx.makeMoveVec({
+      elements: params.pools.map((pool) => tx.pure.address(pool)),
+      type: undefined,
+    })
+
+    const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(params.lockId), pools, weights, tx.object(CLOCK_ADDRESS)]
     tx.moveCall({
-      target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
+      target: `${integrate.published_at}::${Voter}::${functionName}`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  static buildClaimVotingRewardsTransaction(sdk: SDK, params: ClaimFeesParams): Transaction {
+    const tx = new Transaction()
+    tx.setSender(sdk.senderAddress)
+
+    const { integrate } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const functionName = 'claim_fees'
+
+    const locks = tx.makeMoveVec({
+      elements: params.locks.map((lock) => tx.object(lock)),
+      type: 'object',
+    })
+
+    const args = [tx.object(voter_id), tx.object(voting_escrow_id), locks, tx.object(CLOCK_ADDRESS)]
+    tx.moveCall({
+      target: `${integrate.published_at}::${Voter}::${functionName}`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  static buildClaimAndLockRebases(sdk: SDK, params: ClaimAndLockParams): Transaction {
+    const tx = new Transaction()
+    tx.setSender(sdk.senderAddress)
+
+    const { integrate } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, reward_distributor_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const functionName = 'claim'
+
+    const args = [tx.object(reward_distributor_id), tx.object(voting_escrow_id), tx.object(params.lockId), tx.object(CLOCK_ADDRESS)]
+    tx.moveCall({
+      target: `${integrate.published_at}::${RewardDistributor}::${functionName}`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  static buildPoke(sdk: SDK, params: PokeParams): Transaction {
+    const tx = new Transaction()
+    tx.setSender(sdk.senderAddress)
+
+    const { integrate } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const functionName = 'poke'
+
+    const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(params.lockId), tx.object(CLOCK_ADDRESS)]
+    tx.moveCall({
+      target: `${integrate.published_at}::${Voter}::${functionName}`,
       typeArguments,
       arguments: args,
     })
