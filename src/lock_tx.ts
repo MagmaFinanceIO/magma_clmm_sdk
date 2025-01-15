@@ -1,6 +1,5 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import { initMagmaSDK } from './config'
-import { VoteParams } from './types'
 
 function buildTestAccount(): Ed25519Keypair {
   const mnemonics = 'change prison cube paddle nice basic dirt drum upper army middle panic'
@@ -20,8 +19,6 @@ async function run_test() {
   magmaClmmSDK.senderAddress = sendKeypair.getPublicKey().toSuiAddress()
   const account2 = '0xcc1017f624e7c1353432a116ecddf9490b335d351d17257eedd3206699ff4c0a'
 
-  // magmaClmmSDK.Lock.objectsOfUser(sendKeypair.getPublicKey().toSuiAddress())
-
   {
     // 1. Create lock
     const createLockPayload = await magmaClmmSDK.Lock.createLockTransactionPayload({
@@ -33,6 +30,20 @@ async function run_test() {
     console.log('CreateLockTxn #####: ', createLockTxn)
   }
 
+  const lockId = '0xe243e8b84aeb79b2d267a0d177d7d1f7f70fcba77fbc36217ccb178482786eff'
+  const lockId2 = '0xf996458669e811f9f1b19a4016e481ce4c1a7e4074b940b857c905c527e99435'
+  const poolId = '0x4656653c187a22cc9384b3b25b695cbe6c1833300b80a50c9dd1c4522875da27'
+
+  {
+    // Summary of a lock
+    const aLockSummary = await magmaClmmSDK.Lock.aLockSummary(lockId)
+    console.log('summaryOfLock #####: ', aLockSummary)
+
+    // All Lock summary
+    const allLockSummary = await magmaClmmSDK.Lock.allLockSummary()
+    console.log('summaryOfAllLock #####: ', allLockSummary)
+  }
+
   {
     // 2. Query all locks of user
     const locksOfUser = await magmaClmmSDK.Lock.locksOfUser(sendKeypair.getPublicKey().toSuiAddress())
@@ -41,20 +52,6 @@ async function run_test() {
     // 2.1 Query again
     const locksOfUser2 = await magmaClmmSDK.Lock.locksOfUser(account2)
     console.log('LocksOfUser2 #####: ', locksOfUser2)
-  }
-
-  const lockId = '0x0d7b1e1a5fa583a251b2bd387d00415d22dcecb33615d614b4c81b8f3267a73a'
-  const lockId2 = '0xaa5dede13aeff7d1930b92fa86c2144031487a03992b122538110ec0968aaaa5'
-  const poolId = '0x4656653c187a22cc9384b3b25b695cbe6c1833300b80a50c9dd1c4522875da27'
-
-  {
-    // Summary of a lock
-    const aLockSummary = await magmaClmmSDK.Lock.aLockSummary(lockId)
-    console.log('summaryOfLock #####: ', aLockSummary)
-
-    // FIXME: 2.0.1 All Lock summary
-    const allLockSummary = await magmaClmmSDK.Lock.allLockSummary()
-    console.log('summaryOfAllLock #####: ', allLockSummary)
   }
 
   {
@@ -194,6 +191,13 @@ async function run_test() {
     // 17. 获得pool 的incentive token奖励数量
     const poolIncentiveRewards = await magmaClmmSDK.Lock.getPoolIncentiveRewrads(incentiveTokens, lockId)
     console.log('poolIncentiveRewards #####: ', poolIncentiveRewards)
+
+    {
+      // 18. claim voting incentive/bribe tokens
+      const claimVotingBribePayload = await magmaClmmSDK.Lock.claimVotingBribe([lockId], incentiveTokens)
+      const claimVotingBribeTxn = await magmaClmmSDK.fullClient.sendTransaction(sendKeypair, claimVotingBribePayload)
+      console.log('claimVotingRewardsTxn #####: ', claimVotingBribeTxn)
+    }
   }
 }
 

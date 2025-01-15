@@ -44,11 +44,11 @@ export const clmmMainnet: SdkOptions = {
   },
   distribution: {
     package_id: '0x4201f44d506036666a1d9166f7a3450a80c73c551a582684cf39f2dbb3d56461',
-    published_at: '0x4201f44d506036666a1d9166f7a3450a80c73c551a582684cf39f2dbb3d56461',
+    published_at: '0x5c008a2e0aee9a034b19e32bbc119cf6e7b1a0ce1316b2199cde1704d9f64f3c',
   },
   integrate: {
     package_id: '0xb9ff0d29a5769b7a9ef61bcdad1fef26a7938f6cae21cf354e4ba968a6d491b7',
-    published_at: '0x0538c8052d55118ce7ae234c48519b38f9f3ba35e926ec52b8e4aba9c5f61ae5',
+    published_at: '0x54f91ed37b245ac930bea413f7a55bafb0c68786079f641eca609155e993c7df',
   },
   deepbook: {
     package_id: '0x000000000000000000000000000000000000000000000000000000000000dee9',

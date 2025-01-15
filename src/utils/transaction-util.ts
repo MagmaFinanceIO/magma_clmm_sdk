@@ -744,20 +744,11 @@ export class TransactionUtil {
 
     const functionName = 'vote'
 
-    // const pools = tx.makeMoveVec({
-    //   elements: params.pools.map((pool) => tx.pure.address(pool)),
-    //   type: undefined,
-    // })
-
     const pools = tx.pure('vector<id>', params.pools)
     const weights = tx.makeMoveVec({
       elements: params.weights.map((weight) => tx.pure.u64(weight)),
       type: 'u64',
     })
-
-    console.log('########### voter_id: ', voter_id, `${integrate.published_at}::${Voter}::${functionName}`)
-
-    // public entry fun vote<T>(v: &mut Voter<T>, ve: &mut VotingEscrow<T>, lock: &Lock, pools: vector<ID>, weights: vector<u64>, clock: &Clock, ctx: &mut TxContext) {
 
     const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(params.lockId), pools, weights, tx.object(CLOCK_ADDRESS)]
     tx.moveCall({
@@ -771,30 +762,13 @@ export class TransactionUtil {
   static buildClaimVotingRewardsTransaction(sdk: SDK, params: ClaimFeesParams): Transaction {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
-    tx.setGasBudget(500000000)
 
     const { integrate } = sdk.sdkOptions
     const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
 
-    console.log('########### ', magma_token, params.coinAType, params.coinBType)
     const typeArguments = [magma_token, params.coinAType, params.coinBType]
-
     const functionName = 'claim_voting_fee_rewards_single'
 
-    // const locks = tx.pure('vector<0x2a2ba446c47fb9ea97c5a4d17b19055248a1751c23175c2e398cddcd04ecf61c::voting_escrow::Lock>', params.locks)
-
-    // const locks = tx.makeMoveVec({
-    //   elements: params.locks.map((lock) => tx.object(lock)),
-    //   // type: 'object',
-    //   type: '0xbdd42c554f3d97709b2e03363c52ece4fe185889e9e7359bdb769a30c4067a5e::voting_escrow::Lock',
-    //   // type: '0x2a2ba446c47fb9ea97c5a4d17b19055248a1751c23175c2e398cddcd04ecf61c::voting_escrow::Lock',
-    // })
-    // const locks = tx.pure('vector<obj>', params.locks)
-    // const locks = tx.pure(bcs.)
-
-    // console.log('### call: ', `${integrate.published_at}::${Voter}::${functionName}`)
-
-    // public fun claim_voting_fee_rewards_single<T, A, B>(v: &mut Voter<T>, ve: &mut VotingEscrow<T>, lock: &Lock, clock: &Clock, ctx: &mut TxContext) {
     const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(params.locks), tx.object(CLOCK_ADDRESS)]
     tx.moveCall({
       target: `${integrate.published_at}::${Voter}::${functionName}`,
@@ -811,9 +785,7 @@ export class TransactionUtil {
     const { integrate, distribution } = sdk.sdkOptions
     const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
 
-    console.log('########### ', magma_token, params.coinAType, params.coinBType)
     const typeArguments = [magma_token, params.coinAType, params.coinBType]
-
     const functionName = 'claim_voting_fee_rewards'
 
     const locks = tx.makeMoveVec({
@@ -862,6 +834,33 @@ export class TransactionUtil {
     const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(params.lockId), tx.object(CLOCK_ADDRESS)]
     tx.moveCall({
       target: `${integrate.published_at}::${Voter}::${functionName}`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  static buildClaimVotingBribe(sdk: SDK, locks: string[], incentive_tokens: string[]): Transaction {
+    const tx = new Transaction()
+    tx.setSender(sdk.senderAddress)
+
+    const { integrate, distribution } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    let targetFunc = `${integrate.published_at}::${Voter}::claim_voting_bribes_${incentive_tokens.length}`
+    if (incentive_tokens.length === 1) {
+      targetFunc = `${integrate.published_at}::${Voter}::claim_voting_bribes`
+    }
+
+    const locksParams = tx.makeMoveVec({
+      elements: locks.map((lock) => tx.object(lock)),
+      type: `${distribution.package_id}::voting_escrow::Lock`,
+    })
+
+    const args = [tx.object(voter_id), tx.object(voting_escrow_id), locksParams, tx.object(CLOCK_ADDRESS)]
+    tx.moveCall({
+      target: targetFunc,
       typeArguments,
       arguments: args,
     })

@@ -1,5 +1,4 @@
 import { Transaction } from '@mysten/sui/transactions'
-import { bcs } from '@mysten/bcs'
 import {
   CreateLockParams,
   IncreaseLockAmountParams,
@@ -25,6 +24,16 @@ import { TransactionUtil } from '../utils/transaction-util'
 type LocksInfo = {
   owner: string
   lockInfo: LockInfo[]
+}
+
+type AllLockSummary = {
+  current_epoch_end: number
+  current_epoch_vote_end: number
+  rebase_apr: number
+  team_emission_rate: number
+  total_locked: number
+  total_voted_power: number
+  total_voting_power: number
 }
 
 type LockInfo = {
@@ -173,6 +182,13 @@ export class LockModule implements IModule {
     return TransactionUtil.buildPoke(this.sdk, params)
   }
 
+  async claimVotingBribe(locks: string[], incentive_tokens: string[]): Promise<Transaction> {
+    if (this._sdk.senderAddress.length === 0) {
+      throw Error('this config sdk senderAddress is empty')
+    }
+    return TransactionUtil.buildClaimVotingBribe(this.sdk, locks, incentive_tokens)
+  }
+
   async locksOfUser(user: string): Promise<LocksInfo> {
     const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
     const { distribution } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
@@ -199,7 +215,7 @@ export class LockModule implements IModule {
 
       // coin => pool => amount
       const poolIncentiveRewards = await this.getPoolIncentiveRewrads(incentiveTokens, fields.id.id)
-      const votingRewards = new Map<string, Coin[]>()
+      const votingRewards = new Map<string, Coin[]>() // pool => rewardTokens
       poolIncentiveRewards.forEach((value, coin) => {
         value.forEach((amount, pool) => {
           if (!votingRewards.has(pool)) {
@@ -287,13 +303,12 @@ export class LockModule implements IModule {
     return res
   }
 
-  async allLockSummary() {
+  async allLockSummary(): Promise<AllLockSummary> {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
     const { voting_escrow_id, magma_token, voter_id, minter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
-    // public entry fun summary<T>(minter: &Minter<T>, voter: &Voter<T>, ve: &VotingEscrow<T>, clock: &Clock) {
     const args = [tx.object(minter_id), tx.object(voter_id), tx.object(voting_escrow_id), tx.object(CLOCK_ADDRESS)]
 
     tx.moveCall({
@@ -313,25 +328,31 @@ export class LockModule implements IModule {
     if (simulateRes.error != null) {
       throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
     }
+
+    let summary: AllLockSummary = {}
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `Summary`) {
-        console.log('######### item.parsedJson: ', item.parsedJson)
-        // item.parsedJson.ticks.forEach((tick: any) => {
-        //   ticks.push(buildTickDataByEvent(tick))
-        // })
+        summary = {
+          current_epoch_end: Number(item.parsedJson.current_epoch_end),
+          current_epoch_vote_end: Number(item.parsedJson.current_epoch_vote_end),
+          rebase_apr: Number(item.parsedJson.rebase_apr),
+          team_emission_rate: Number(item.parsedJson.team_emission_rate),
+          total_locked: Number(item.parsedJson.total_locked),
+          total_voted_power: Number(item.parsedJson.total_voted_power),
+          total_voting_power: Number(item.parsedJson.total_voting_power),
+        }
       }
     })
-    // return ticks
+    return summary
   }
 
   async poolWeights(pools: string[]): Promise<PoolWeight[]> {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id, minter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
     const poolsParams = tx.pure('vector<id>', pools)
-    // public entry fun summary<T>(minter: &Minter<T>, voter: &Voter<T>, ve: &VotingEscrow<T>, clock: &Clock) {
     const args = [tx.object(voter_id), poolsParams]
 
     tx.moveCall({
@@ -451,7 +472,14 @@ export class LockModule implements IModule {
     return poolBirbeRewardTokens
   }
 
+  // tokenId => pool => incentive_tokens
   async getPoolIncentiveRewrads(incentive_tokens: string[], locksId: string) {
+    // tokenId => pool => incentive_tokens
+    const poolBirbeRewardTokens = new Map<string, Map<string, string>>()
+    if (incentive_tokens.length === 0) {
+      return poolBirbeRewardTokens
+    }
+
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
     const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
@@ -481,20 +509,15 @@ export class LockModule implements IModule {
       throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
-    // data: VecMap<TypeName, VecMap<ID, u64>>,
-
-    // tokenId => pool => incentive_tokens
-    // FIXME:
-    const poolBirbeRewardTokens = new Map<string, Map<string, number>>()
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `ClaimableVotingBribes`) {
-        item.parsedJson.list.contents.forEach((rewardTokens) => {
-          if (!poolBirbeRewardTokens.has(rewardTokens.pool)) {
-            poolBirbeRewardTokens.set(rewardTokens.key, new Map<string, number>())
+        item.parsedJson.data.contents.forEach((rewardTokens) => {
+          if (!poolBirbeRewardTokens.has(rewardTokens.key.name)) {
+            poolBirbeRewardTokens.set(rewardTokens.key.name, new Map<string, string>())
           }
 
-          poolTokens.value.forEach((token) => {
-            poolBirbeRewardTokens.get(poolTokens.key).push(token.name)
+          rewardTokens.value.contents.forEach((token) => {
+            poolBirbeRewardTokens.get(rewardTokens.key.name).set(token.key, token.value)
           })
         })
       }
