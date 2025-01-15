@@ -57,12 +57,26 @@ export type LockPermanentParams = {
 export type VoteParams = {
   lockId: SuiObjectIdType
 
-  pools: SuiObjectIdType[]
+  pools: SuiAddressType[]
 
   weights: number[]
 }
 
 export type ClaimFeesParams = {
+  /**
+   * The address type of the coin A.
+   */
+  coinAType: SuiAddressType
+
+  /**
+   * The address type of the coin A.
+   */
+  coinBType: SuiAddressType
+
+  locks: SuiObjectIdType
+}
+
+export type ClaimFeesPoolsParams = {
   /**
    * The address type of the coin A.
    */

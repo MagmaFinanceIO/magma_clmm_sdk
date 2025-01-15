@@ -1,4 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions'
+import { bcs } from '@mysten/bcs'
 import {
   CreateLockParams,
   IncreaseLockAmountParams,
@@ -8,13 +9,58 @@ import {
   LockPermanentParams,
   VoteParams,
   ClaimFeesParams as ClaimVotingRewardsParams,
+  ClaimFeesPoolsParams as ClaimVotingRewardsPoolsParams,
   ClaimAndLockParams,
   PokeParams,
-} from 'src/types'
-import { getPackagerConfigs } from '../types'
+  VotingEscrow,
+  CLOCK_ADDRESS,
+  getPackagerConfigs,
+  Voter,
+} from '../types'
+import { checkInvalidSuiAddress, extractStructTagFromType } from '../utils'
 import { IModule } from '../interfaces/IModule'
 import { MagmaClmmSDK } from '../sdk'
 import { TransactionUtil } from '../utils/transaction-util'
+
+type LocksInfo = {
+  owner: string
+  lockInfo: LockInfo[]
+}
+
+type LockInfo = {
+  lock_id: string
+  amount: string
+  start: string
+  end: string
+  permanent: boolean
+
+  rebase_amount: Coin
+  voting_power: string
+  voting_rewards: Map<string, Coin[]> // pool => incentiveTokenAmount
+}
+
+type Coin = {
+  kind?: CoinType
+  token_addr: string
+  amount: string
+}
+
+enum CoinType {
+  RebaseCoin = 'rebaseCoin',
+  Fee = 'fee',
+  Incentive = 'incentiveCoin',
+}
+
+type PoolWeight = {
+  poolId: string
+  weight: string
+}
+
+type ALockSummary = {
+  fee_incentive_total: string
+  reward_distributor_claimable: string
+  voting_power: string
+}
 
 export class LockModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -104,6 +150,15 @@ export class LockModule implements IModule {
     return TransactionUtil.buildClaimVotingRewardsTransaction(this.sdk, params)
   }
 
+  // public fun claim_fees<T, B>(self: &mut Voter<T>, ve: &mut VotingEscrow<T>, mut locks: vector<Lock>, clock: &Clock, ctx: &mut TxContext) {
+  async claimVotingRewardsPoolsPayload(params: ClaimVotingRewardsPoolsParams): Promise<Transaction> {
+    if (this._sdk.senderAddress.length === 0) {
+      throw Error('this config sdk senderAddress is empty')
+    }
+
+    return TransactionUtil.buildClaimVotingRewardsPoolsTransaction(this.sdk, params)
+  }
+
   async claimAndLockRebasesPayload(params: ClaimAndLockParams): Promise<Transaction> {
     if (this._sdk.senderAddress.length === 0) {
       throw Error('this config sdk senderAddress is empty')
@@ -120,92 +175,372 @@ export class LockModule implements IModule {
 
   async locksOfUser(user: string): Promise<LocksInfo> {
     const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
-    const { distribution_package_id } = getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+    const { distribution } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
 
     // all objects
     const ownerRes = await this._sdk.fullClient.getOwnedObjectsByPage(user, {
       options: { showType: true, showContent: true, showDisplay: true, showOwner: true },
       filter: {
-        MatchAll: [{ Package: distribution_package_id }, { StructType: `${distribution_package_id}::voting_escrow::Lock` }],
+        MatchAll: [{ Package: distribution.package_id }, { StructType: `${distribution.package_id}::voting_escrow::Lock` }],
       },
     })
 
     for (const item of ownerRes.data as any[]) {
       const { fields } = item.data.content
-      locksInfo.lockInfo.push({
+
+      const aLockSummary = await this.aLockSummary(fields.id.id)
+      const poolIncentiveTokens = await this.getVotingBribeRewardTokens(fields.id.id)
+
+      const incentiveTokens: string[] = []
+      poolIncentiveTokens.forEach((value, key) => {
+        incentiveTokens.push(...value)
+      })
+
+      // coin => pool => amount
+      const poolIncentiveRewards = await this.getPoolIncentiveRewrads(incentiveTokens, fields.id.id)
+      const votingRewards = new Map<string, Coin[]>()
+      poolIncentiveRewards.forEach((value, coin) => {
+        value.forEach((amount, pool) => {
+          if (!votingRewards.has(pool)) {
+            votingRewards.set(pool, [])
+          }
+          votingRewards.get(pool)?.push({
+            kind: CoinType.Incentive,
+            token_addr: coin,
+            amount: amount.toString(),
+          })
+        })
+      })
+
+      const lockInfo: LockInfo = {
         lock_id: fields.id.id,
         amount: fields.amount,
         start: fields.start,
         end: fields.end,
         permanent: fields.permanent,
-      })
+
+        rebase_amount: {
+          kind: CoinType.RebaseCoin,
+          token_addr: magma_token,
+          amount: aLockSummary.reward_distributor_claimable,
+        },
+        voting_power: aLockSummary.voting_power,
+        // pool => incentive => amount
+        voting_rewards: votingRewards,
+      }
+
+      locksInfo.lockInfo.push(lockInfo)
     }
     return locksInfo
   }
 
-  // // FIXME: SuiEventFilter `And` or `All` not working
-  // async locksOfUser(user: string): Promise<LocksInfo> {
-  //   const { distribution_package_id } = getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+  async aLockSummary(lock_id: string): Promise<ALockSummary> {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id, reward_distributor_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
 
-  //   const ids: SuiObjectIdType[] = []
-  //   const eventFilter: SuiEventFilter = {
-  //     MoveEventType: `${distribution_package_id}::voting_escrow::EventCreateLock`,
-  //   }
+    const args = [
+      tx.object(voter_id),
+      tx.object(voting_escrow_id),
+      tx.object(reward_distributor_id),
+      tx.object(lock_id),
+      tx.object(CLOCK_ADDRESS),
+    ]
 
-  //   // 1. Fetch create locks events
-  //   const events = await this._sdk.fullClient.queryEventsByPage(eventFilter)
+    tx.moveCall({
+      target: `${integrate.published_at}::${VotingEscrow}::lock_summary`,
+      arguments: args,
+      typeArguments,
+    })
 
-  //   events.data.forEach((event) => {
-  //     const fields = event.parsedJson
-  //     if (fields && fields.owner === user) {
-  //       ids.push(fields.lock_id)
-  //     }
-  //   })
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
 
-  //   const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
-  //   const objects = await this._sdk.fullClient.batchGetObjects(ids, { showContent: true })
+    if (simulateRes.error != null) {
+      throw new Error(`lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
 
-  //   objects.forEach((object) => {
-  //     if ('data' in object) {
-  //       const fields = getObjectFields(object)
-  //       locksInfo.lockInfo.push({
-  //         lock_id: fields.id.id,
-  //         amount: fields.amount,
-  //         start: fields.start,
-  //         end: fields.end,
-  //         permanent: fields.permanent,
-  //       })
-  //     }
-  //   })
-  //   return locksInfo
-  // }
-}
+    let res: ALockSummary = {
+      //  reward_distributor_claimable + incentive的magma
+      fee_incentive_total: '',
+      // 有多少可以领取的Magma
+      reward_distributor_claimable: '',
 
-type LocksInfo = {
-  owner: string
-  lockInfo: LockInfo[]
-}
+      voting_power: '',
+    }
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `LockSummary`) {
+        res = {
+          fee_incentive_total: item.parsedJson.fee_incentive_total,
+          reward_distributor_claimable: item.parsedJson.reward_distributor_claimable,
+          voting_power: item.parsedJson.voting_power,
+        }
+      }
+    })
+    return res
+  }
 
-type LockInfo = {
-  lock_id: string
-  amount: string
-  start: string
-  end: string
-  permanent: boolean
+  async allLockSummary() {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id, minter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
 
-  rebase_amount: Coin
-  voting_power: string
-  voting_rewards: Coin[]
-}
+    // public entry fun summary<T>(minter: &Minter<T>, voter: &Voter<T>, ve: &VotingEscrow<T>, clock: &Clock) {
+    const args = [tx.object(minter_id), tx.object(voter_id), tx.object(voting_escrow_id), tx.object(CLOCK_ADDRESS)]
 
-type Coin = {
-  kind?: CoinType
-  token_addr: string
-  amount: string
-}
+    tx.moveCall({
+      target: `${integrate.published_at}::${VotingEscrow}::summary`,
+      arguments: args,
+      typeArguments,
+    })
 
-enum CoinType {
-  Coin = 'coin',
-  Fee = 'fee',
-  Incentive = 'incentive',
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    if (simulateRes.error != null) {
+      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `Summary`) {
+        console.log('######### item.parsedJson: ', item.parsedJson)
+        // item.parsedJson.ticks.forEach((tick: any) => {
+        //   ticks.push(buildTickDataByEvent(tick))
+        // })
+      }
+    })
+    // return ticks
+  }
+
+  async poolWeights(pools: string[]): Promise<PoolWeight[]> {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id, minter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const poolsParams = tx.pure('vector<id>', pools)
+    // public entry fun summary<T>(minter: &Minter<T>, voter: &Voter<T>, ve: &VotingEscrow<T>, clock: &Clock) {
+    const args = [tx.object(voter_id), poolsParams]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${Voter}::pools_tally`,
+      arguments: args,
+      typeArguments,
+    })
+
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    if (simulateRes.error != null) {
+      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+
+    const poolWeights: PoolWeight[] = []
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `PoolsTally`) {
+        item.parsedJson.list.forEach((item: any) => {
+          poolWeights.push({
+            poolId: item.id,
+            weight: item.weight,
+          })
+        })
+      }
+    })
+    return poolWeights
+  }
+
+  async getVotingFeeRewardTokens(lock_id: string) {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const args = [tx.object(voter_id), tx.object(lock_id)]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${Voter}::get_voting_fee_reward_tokens`,
+      arguments: args,
+      typeArguments,
+    })
+
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    if (simulateRes.error != null) {
+      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+
+    const poolRewardTokens = new Map<string, string[]>()
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `EventRewardTokens`) {
+        item.parsedJson.list.contents.forEach((poolTokens) => {
+          if (!poolRewardTokens.has(poolTokens.key)) {
+            poolRewardTokens.set(poolTokens.key, [])
+          }
+
+          poolTokens.value.forEach((token) => {
+            poolRewardTokens.get(poolTokens.key).push(token.name)
+          })
+        })
+      }
+    })
+    return poolRewardTokens
+  }
+
+  async getVotingBribeRewardTokens(lock_id: string) {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const args = [tx.object(voter_id), tx.object(lock_id)]
+    tx.moveCall({
+      target: `${integrate.published_at}::${Voter}::get_voting_bribe_reward_tokens`,
+      arguments: args,
+      typeArguments,
+    })
+
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    if (simulateRes.error != null) {
+      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+
+    const poolBirbeRewardTokens = new Map<string, string[]>()
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `EventRewardTokens`) {
+        item.parsedJson.list.contents.forEach((poolTokens) => {
+          if (!poolBirbeRewardTokens.has(poolTokens.key)) {
+            poolBirbeRewardTokens.set(poolTokens.key, [])
+          }
+
+          poolTokens.value.forEach((token) => {
+            poolBirbeRewardTokens.get(poolTokens.key).push(token.name)
+          })
+        })
+      }
+    })
+    return poolBirbeRewardTokens
+  }
+
+  async getPoolIncentiveRewrads(incentive_tokens: string[], locksId: string) {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token, ...incentive_tokens]
+
+    const args = [tx.object(voter_id), tx.object(locksId), tx.object(CLOCK_ADDRESS)]
+    let targetFunc = `${integrate.published_at}::${Voter}::claimable_voting_bribes_${incentive_tokens.length}`
+    if (incentive_tokens.length === 1) {
+      targetFunc = `${integrate.published_at}::${Voter}::claimable_voting_bribes`
+    }
+
+    tx.moveCall({
+      target: targetFunc,
+      arguments: args,
+      typeArguments,
+    })
+
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    if (simulateRes.error != null) {
+      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+
+    // data: VecMap<TypeName, VecMap<ID, u64>>,
+
+    // tokenId => pool => incentive_tokens
+    // FIXME:
+    const poolBirbeRewardTokens = new Map<string, Map<string, number>>()
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `ClaimableVotingBribes`) {
+        item.parsedJson.list.contents.forEach((rewardTokens) => {
+          if (!poolBirbeRewardTokens.has(rewardTokens.pool)) {
+            poolBirbeRewardTokens.set(rewardTokens.key, new Map<string, number>())
+          }
+
+          poolTokens.value.forEach((token) => {
+            poolBirbeRewardTokens.get(poolTokens.key).push(token.name)
+          })
+        })
+      }
+    })
+    return poolBirbeRewardTokens
+  }
+
+  async getPoolBribeRewardTokens(lock_id: string) {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const args = [tx.object(voter_id), tx.object(lock_id)]
+    tx.moveCall({
+      target: `${integrate.published_at}::${Voter}::get_voting_bribe_reward_tokens`,
+      arguments: args,
+      typeArguments,
+    })
+
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    if (simulateRes.error != null) {
+      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+
+    const poolBirbeRewardTokens = new Map<string, string[]>()
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `EventRewardTokens`) {
+        item.parsedJson.list.contents.forEach((poolTokens) => {
+          if (!poolBirbeRewardTokens.has(poolTokens.key)) {
+            poolBirbeRewardTokens.set(poolTokens.key, [])
+          }
+
+          poolTokens.value.forEach((token) => {
+            poolBirbeRewardTokens.get(poolTokens.key).push(token.name)
+          })
+        })
+      }
+    })
+    return poolBirbeRewardTokens
+  }
 }

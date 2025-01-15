@@ -13,17 +13,16 @@ const SDKConfig = {
     launchpad_pools_id: '0x1098fac992eab3a0ab7acf15bb654fc1cf29b5a6142c4ef1058e6c408dd15115',
     clmm_pools_id: '0x15b6a27dd9ae03eb455aba03b39e29aad74abd3757b8e18c0755651b2ae5b71e',
     admin_cap_id: '0x39d78781750e193ce35c45ff32c6c0c3f2941fa3ddaf8595c90c555589ddb113',
-    global_config_id: '0x0408fa4e4a4c03cc0de8f23d0c2bbfe8913d178713c9a271ed4080973fe42d8f',
     coin_list_handle: '0x49136005e90e28c4695419ed4194cc240603f1ea8eb84e62275eaff088a71063',
     launchpad_pools_handle: '0x5e194a8efcf653830daf85a85b52e3ae8f65dc39481d54b2382acda25068375c',
     clmm_pools_handle: '0x37f60eb2d9d227949b95da8fea810db3c32d1e1fa8ed87434fc51664f87d83cb',
 
-    voter_id: '0xcebea372de09bba70be2f0a94b7576775777cdaf82dca74deb2f0b3cb18d7768',
-    voting_escrow_id: '0x65a5f4a946abefad3bb322a652706b4a7c40cf1121abd7c5e8d7921f329f5a81',
-    reward_distributor_id: '0x089e2ff3dde937043d96e3bd935624c39766b955cbe36b6d04403ee03979d9b2',
-    magma_token: '0xb58850921a2c438ba02213c6bba741ed6133094a0f5c08a8164b9194fa212229::magma_token::MAGMA_TOKEN',
-
-    distribution_package_id: '0xb58850921a2c438ba02213c6bba741ed6133094a0f5c08a8164b9194fa212229',
+    global_config_id: '0x8a913c8e2f050b28e7a132d53e679cfc12f6392ed8b3b02321164be701baa785',
+    voter_id: '0x2e2fae39d85e991e1adad756f6723bb1aebc33140b8b16897a41171640389f88',
+    voting_escrow_id: '0x8c300ccc0cb221feb76d0ed0820ff0873477ab1ada266129d594d539c5cd2f11',
+    reward_distributor_id: '0x289c10f62e998a2ee58a982262732af7e329b7b689f4c81b0e16de7c6589669c',
+    magma_token: '0x4201f44d506036666a1d9166f7a3450a80c73c551a582684cf39f2dbb3d56461::magma_token::MAGMA_TOKEN',
+    minter_id: '0xfaf1c9b59192a3f910f28d46325dbfb3ffcc92df43d11663f3820fec8faf540b',
   },
 }
 
@@ -39,13 +38,17 @@ export const clmmMainnet: SdkOptions = {
     config: SDKConfig.magmaConfig,
   },
   clmm_pool: {
-    package_id: '0x1eabed72c53feb3805120a081dc15963c204dc8d091542592abaf7a35689b2fb',
-    published_at: '0xd8790c43d67c7cd00a100c9136345bd67ede81df1ea46a09b5b1b3c828254e62',
+    package_id: '0x8d25397bbef109a7a53833a10da9dfa9b52f2f584198429e31aa33429387f1b5',
+    published_at: '0x8d25397bbef109a7a53833a10da9dfa9b52f2f584198429e31aa33429387f1b5',
     config: SDKConfig.clmmConfig,
   },
+  distribution: {
+    package_id: '0x4201f44d506036666a1d9166f7a3450a80c73c551a582684cf39f2dbb3d56461',
+    published_at: '0x4201f44d506036666a1d9166f7a3450a80c73c551a582684cf39f2dbb3d56461',
+  },
   integrate: {
-    package_id: '0x5cc04c369e79b84bb7544280adb89bb65b2dbcd6d3fc9e415a3a76b66efad1f5',
-    published_at: '0xb8b52590ff99fe27141aea7929d185e45c5e7f85ae3a2eaaab218d679d2da885',
+    package_id: '0xb9ff0d29a5769b7a9ef61bcdad1fef26a7938f6cae21cf354e4ba968a6d491b7',
+    published_at: '0x0538c8052d55118ce7ae234c48519b38f9f3ba35e926ec52b8e4aba9c5f61ae5',
   },
   deepbook: {
     package_id: '0x000000000000000000000000000000000000000000000000000000000000dee9',

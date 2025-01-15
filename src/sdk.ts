@@ -56,6 +56,8 @@ export type SdkOptions = {
    */
   clmm_pool: Package<ClmmConfig>
 
+  distribution: Package
+
   /**
    * Package containing integration-related configurations.
    */
