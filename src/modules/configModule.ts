@@ -405,6 +405,11 @@ export class ConfigModule implements IModule {
       coin_list_handle: '',
       launchpad_pools_handle: '',
       clmm_pools_handle: '',
+      voter_id: '',
+      minter_id: '',
+      reward_distributor_id: '',
+      magma_token: '',
+      voting_escrow_id: '',
     }
 
     if (objects.data.length > 0) {

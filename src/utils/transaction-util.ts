@@ -744,7 +744,7 @@ export class TransactionUtil {
 
     const functionName = 'vote'
 
-    const pools = tx.pure('vector<id>', params.pools)
+    const pools = tx.pure.vector('id', params.pools)
     const weights = tx.makeMoveVec({
       elements: params.weights.map((weight) => tx.pure.u64(weight)),
       type: 'u64',

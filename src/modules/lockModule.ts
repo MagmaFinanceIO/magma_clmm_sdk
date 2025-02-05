@@ -329,7 +329,15 @@ export class LockModule implements IModule {
       throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
-    let summary: AllLockSummary = {}
+    let summary: AllLockSummary = {
+      current_epoch_end: 0,
+      current_epoch_vote_end: 0,
+      rebase_apr: 0,
+      team_emission_rate: 0,
+      total_locked: 0,
+      total_voted_power: 0,
+      total_voting_power: 0,
+    }
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `Summary`) {
         summary = {
@@ -352,7 +360,7 @@ export class LockModule implements IModule {
     const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
-    const poolsParams = tx.pure('vector<id>', pools)
+    const poolsParams = tx.pure.vector('id', pools)
     const args = [tx.object(voter_id), poolsParams]
 
     tx.moveCall({
@@ -416,13 +424,13 @@ export class LockModule implements IModule {
     const poolRewardTokens = new Map<string, string[]>()
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventRewardTokens`) {
-        item.parsedJson.list.contents.forEach((poolTokens) => {
+        item.parsedJson.list.contents.forEach((poolTokens: any) => {
           if (!poolRewardTokens.has(poolTokens.key)) {
             poolRewardTokens.set(poolTokens.key, [])
           }
 
-          poolTokens.value.forEach((token) => {
-            poolRewardTokens.get(poolTokens.key).push(token.name)
+          poolTokens.value.forEach((token: any) => {
+            poolRewardTokens.get(poolTokens.key)?.push(token.name)
           })
         })
       }
@@ -458,13 +466,13 @@ export class LockModule implements IModule {
     const poolBirbeRewardTokens = new Map<string, string[]>()
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventRewardTokens`) {
-        item.parsedJson.list.contents.forEach((poolTokens) => {
+        item.parsedJson.list.contents.forEach((poolTokens: any) => {
           if (!poolBirbeRewardTokens.has(poolTokens.key)) {
             poolBirbeRewardTokens.set(poolTokens.key, [])
           }
 
-          poolTokens.value.forEach((token) => {
-            poolBirbeRewardTokens.get(poolTokens.key).push(token.name)
+          poolTokens.value.forEach((token: any) => {
+            poolBirbeRewardTokens.get(poolTokens.key)?.push(token.name)
           })
         })
       }
@@ -511,13 +519,13 @@ export class LockModule implements IModule {
 
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `ClaimableVotingBribes`) {
-        item.parsedJson.data.contents.forEach((rewardTokens) => {
+        item.parsedJson.data.contents.forEach((rewardTokens: any) => {
           if (!poolBirbeRewardTokens.has(rewardTokens.key.name)) {
             poolBirbeRewardTokens.set(rewardTokens.key.name, new Map<string, string>())
           }
 
-          rewardTokens.value.contents.forEach((token) => {
-            poolBirbeRewardTokens.get(rewardTokens.key.name).set(token.key, token.value)
+          rewardTokens.value.contents.forEach((token: any) => {
+            poolBirbeRewardTokens.get(rewardTokens.key.name)?.set(token.key, token.value)
           })
         })
       }
@@ -553,13 +561,13 @@ export class LockModule implements IModule {
     const poolBirbeRewardTokens = new Map<string, string[]>()
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventRewardTokens`) {
-        item.parsedJson.list.contents.forEach((poolTokens) => {
+        item.parsedJson.list.contents.forEach((poolTokens: any) => {
           if (!poolBirbeRewardTokens.has(poolTokens.key)) {
             poolBirbeRewardTokens.set(poolTokens.key, [])
           }
 
-          poolTokens.value.forEach((token) => {
-            poolBirbeRewardTokens.get(poolTokens.key).push(token.name)
+          poolTokens.value.forEach((token: any) => {
+            poolBirbeRewardTokens.get(poolTokens.key)?.push(token.name)
           })
         })
       }
