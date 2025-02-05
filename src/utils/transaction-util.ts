@@ -1,6 +1,7 @@
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { Transaction, TransactionObjectArgument } from '@mysten/sui/transactions'
+import { bcs } from '@mysten/bcs'
 import { CoinAssist } from '../math/CoinAssist'
 import { OnePath, SwapWithRouterParams } from '../modules/routerModule'
 import { TickData } from '../types/clmmpool'
@@ -48,7 +49,6 @@ import SDK, {
 } from '../index'
 import { AggregatorResult, BasePath } from '../modules/routerModuleV2'
 import { ClmmpoolsError, UtilsErrorCode } from '../errors/errors'
-import { bcs } from '@mysten/bcs'
 
 export type AdjustResult = {
   isAdjustCoinA: boolean
