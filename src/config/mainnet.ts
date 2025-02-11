@@ -3,9 +3,9 @@ import MagmaClmmSDK, { SdkOptions } from '../main'
 
 const SDKConfig = {
   clmmConfig: {
-    pools_id: '0xf699e7f2276f5c9a75944b37a0c5b5d9ddfd2471bf6242483b03ab2887d198d0',
-    global_config_id: '0x4f32c00706e7bdbce532acdcfc0afd91b14defd5ffc9e2723a0ce7ed84f5d380',
-    global_vault_id: '0xce7bceef26d3ad1f6d9b6f13a953f053e6ed3ca77907516481ce99ae8e588f2b',
+    pools_id: '0xfa145b9de10fe858be81edd1c6cdffcf27be9d016de02a1345eb1009a68ba8b2',
+    global_config_id: '0x4c4e1402401f72c7d8533d0ed8d5f8949da363c7a3319ccef261ffe153d32f8a',
+    global_vault_id: '0xa7e1102f222b6eb81ccc8a126e7feb2353342be9df6f6646a77c4519da29c071',
     admin_cap_id: '0x89c1a321291d15ddae5a086c9abc533dff697fde3d89e0ca836c41af73e36a75',
   },
   magmaConfig: {
@@ -38,8 +38,8 @@ export const clmmMainnet: SdkOptions = {
     config: SDKConfig.magmaConfig,
   },
   clmm_pool: {
-    package_id: '0x0a9b94307de472ebe7c1a24ea862eb013d954c9c003a0484e045861d05b31435',
-    published_at: '0x0a9b94307de472ebe7c1a24ea862eb013d954c9c003a0484e045861d05b31435',
+    package_id: '0x4a35d3dfef55ed3631b7158544c6322a23bc434fe4fca1234cb680ce0505f82d',
+    published_at: '0x4a35d3dfef55ed3631b7158544c6322a23bc434fe4fca1234cb680ce0505f82d',
     config: SDKConfig.clmmConfig,
   },
   distribution: {
@@ -58,8 +58,8 @@ export const clmmMainnet: SdkOptions = {
     package_id: '0xac95e8a5e873cfa2544916c16fe1461b6a45542d9e65504c1794ae390b3345a7',
     published_at: '0xac95e8a5e873cfa2544916c16fe1461b6a45542d9e65504c1794ae390b3345a7',
   },
-  aggregatorUrl: 'https://api-sui.magma.zone/router',
-  swapCountUrl: 'https://api-sui.magma.zone/v2/sui/swap/count',
+  aggregatorUrl: 'https://api.magmafinance.io/api/router',
+  swapCountUrl: 'https://api.magmafinance.io/api/v2/sui/swap/count',
 }
 
 /**
