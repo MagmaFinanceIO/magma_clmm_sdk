@@ -11,6 +11,8 @@ import {
   PositionReward,
   RemoveLiquidityParams,
   getPackagerConfigs,
+  AddLiquidityWithProtectionParams,
+  OpenPositionAddLiquidityWithProtectionParams,
 } from '../types'
 import {
   CachedContent,
@@ -376,6 +378,49 @@ export class PositionModule implements IModule {
     return TransactionUtil.buildAddLiquidityFixToken(this._sdk, allCoinAsset, params, tx, inputCoinA, inputCoinB)
   }
 
+
+  /**
+   * create add liquidity transaction payload with fix token
+   * @param {AddLiquidityFixTokenParams} params
+   * @param gasEstimateArg : When the fix input amount is SUI, gasEstimateArg can control whether to recalculate the number of SUI to prevent insufficient gas.
+   * If this parameter is not passed, gas estimation is not performed
+   * @returns {Promise<TransactionBlock>}
+   */
+  async createAddLiquidityFixTokenWithProtectionPayload(
+    params: AddLiquidityWithProtectionParams,
+    gasEstimateArg?: {
+      slippage: number
+      curSqrtPrice: BN
+    },
+    tx?: Transaction,
+    inputCoinA?: TransactionObjectArgument,
+    inputCoinB?: TransactionObjectArgument
+  ): Promise<Transaction> {
+    if (!checkInvalidSuiAddress(this._sdk.senderAddress)) {
+      throw new ClmmpoolsError('this config sdk senderAddress is not set right', UtilsErrorCode.InvalidSendAddress)
+    }
+    const allCoinAsset = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+
+    if (gasEstimateArg) {
+      const { isAdjustCoinA, isAdjustCoinB } = findAdjustCoin(params)
+      params = params as AddLiquidityWithProtectionParams
+      if ((params.fix_amount_a && isAdjustCoinA) || (!params.fix_amount_a && isAdjustCoinB)) {
+        tx = await TransactionUtil.buildAddLiquidityFixTokenForGas(
+          this._sdk,
+          allCoinAsset,
+          params,
+          gasEstimateArg,
+          tx,
+          inputCoinA,
+          inputCoinB
+        )
+        return tx
+      }
+    }
+
+    return TransactionUtil.buildAddLiquidityWithProtectionFixToken(this._sdk, allCoinAsset, params, tx, inputCoinA, inputCoinB)
+  }
+
   /**
    * create add liquidity transaction payload
    * @param {AddLiquidityParams} params
@@ -682,6 +727,7 @@ export class PositionModule implements IModule {
       feeOwedB: '0',
     }
   }
+
 
   /**
    * Updates the cache for the given key.

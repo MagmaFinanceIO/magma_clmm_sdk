@@ -941,3 +941,50 @@ export function getPackagerConfigs<T>(packageObj: Package<T>) {
   }
   return packageObj.config
 }
+
+export type OpenPositionAddLiquidityWithProtectionParams = {
+  pool: SuiAddressType
+  tick_lower: number
+  tick_upper: number
+  coin_a: number | string
+  coin_b: number | string
+
+  /**
+   * The address type of the coin A.
+   */
+  coinAType: SuiAddressType
+
+  /**
+   * The address type of the coin A.
+   */
+  coinBType: SuiAddressType
+
+  max_amount_a: number
+  max_amount_b: number
+  min_amount_a: number
+  min_amount_b: number
+  by_amount_a: boolean
+}
+
+export type AddLiquidityWithProtectionParams = AddLiquidityFixTokenParams& {
+  // pool: SuiAddressType
+  // position: SuiObjectIdType
+  // coin_a: number | string
+  // coin_b: number | string
+
+  // /**
+  //  * The address type of the coin A.
+  //  */
+  // coinAType: SuiAddressType
+
+  // /**
+  //  * The address type of the coin A.
+  //  */
+  // coinBType: SuiAddressType
+
+  // max_amount_a: number
+  // max_amount_b: number
+  // min_amount_a: number
+  // min_amount_b: number
+  // fix_amount_a: boolean
+}
