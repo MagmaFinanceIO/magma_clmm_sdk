@@ -21,6 +21,7 @@ const SDKConfig = {
     voter_id: '0x59571991a5c7041c4376d980061af5c7a6d8345006d6b5167bd1f00fc17b8ddb',
     voting_escrow_id: '0x9081c8044719135da4ff2d52907fcd40c19e2a40750cbba4c1d6a59610ae1446',
     reward_distributor_id: '0xdf213d8e0ca49c8f4a508e7d3b3a6983c4aafd639f7c99479fc75fb4451d752e',
+    distribution_cfg: '0x94e23846c975e2faf89a61bfc2b10ad64decab9069eb1f9fc39752b010868c74',
     magma_token: '0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MAGMA_TOKEN',
     minter_id: '0x89435d6b2a510ba50ca23303f10e91ec058f138a88f69a43fe03cd22edb214c5',
   },

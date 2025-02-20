@@ -408,6 +408,7 @@ export class ConfigModule implements IModule {
       voter_id: '',
       minter_id: '',
       reward_distributor_id: '',
+      distribution_cfg: '',
       magma_token: '',
       voting_escrow_id: '',
     }

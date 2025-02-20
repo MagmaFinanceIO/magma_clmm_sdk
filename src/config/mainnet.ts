@@ -18,11 +18,12 @@ const SDKConfig = {
     clmm_pools_handle: '0x37f60eb2d9d227949b95da8fea810db3c32d1e1fa8ed87434fc51664f87d83cb',
 
     global_config_id: '0x4f32c00706e7bdbce532acdcfc0afd91b14defd5ffc9e2723a0ce7ed84f5d380',
-    voter_id: '0x2e2fae39d85e991e1adad756f6723bb1aebc33140b8b16897a41171640389f88',
-    voting_escrow_id: '0x8c300ccc0cb221feb76d0ed0820ff0873477ab1ada266129d594d539c5cd2f11',
-    reward_distributor_id: '0x289c10f62e998a2ee58a982262732af7e329b7b689f4c81b0e16de7c6589669c',
-    magma_token: '0x4201f44d506036666a1d9166f7a3450a80c73c551a582684cf39f2dbb3d56461::magma_token::MAGMA_TOKEN',
-    minter_id: '0xfaf1c9b59192a3f910f28d46325dbfb3ffcc92df43d11663f3820fec8faf540b',
+    voter_id: '0xe8e0c266602404caa463f85bee4ccf6000c8c2566204a3949400a06857295ceb',
+    voting_escrow_id: '0x143aab8c7c13c58a94d99ae281b4226f1877abc21bc01b9d75b58a7217fc3b2c',
+    reward_distributor_id: '0x93bf24d3db08f93a02ba90abc7095f8d8086e5a1f72bac8bd866df21defe83ab',
+    distribution_cfg: '0x94e23846c975e2faf89a61bfc2b10ad64decab9069eb1f9fc39752b010868c74',
+    magma_token: '0x3abcdefce1a0ec1252237b69efc6dc3881325d543fceaad2e2f360a02d2f5bd9::magma_token::MAGMA_TOKEN',
+    minter_id: '0x92877b638c3febf8576d0d7caebf9a2c43753b2e441669fb434e709458ece345',
   },
 }
 
@@ -43,12 +44,12 @@ export const clmmMainnet: SdkOptions = {
     config: SDKConfig.clmmConfig,
   },
   distribution: {
-    package_id: '0x4201f44d506036666a1d9166f7a3450a80c73c551a582684cf39f2dbb3d56461',
-    published_at: '0x5c008a2e0aee9a034b19e32bbc119cf6e7b1a0ce1316b2199cde1704d9f64f3c',
+    package_id: '0x3abcdefce1a0ec1252237b69efc6dc3881325d543fceaad2e2f360a02d2f5bd9',
+    published_at: '0x3abcdefce1a0ec1252237b69efc6dc3881325d543fceaad2e2f360a02d2f5bd9',
   },
   integrate: {
-    package_id: '0x01268a2afbaf91538f0b9041269fe2780273eb83b642abd4fcacad7b660a3711',
-    published_at: '0x01268a2afbaf91538f0b9041269fe2780273eb83b642abd4fcacad7b660a3711',
+    package_id: '0x6e3ae31a16362c563c0fef5293348d262646882a10c307f20f6be8577960f1ef',
+    published_at: '0x6e3ae31a16362c563c0fef5293348d262646882a10c307f20f6be8577960f1ef',
   },
   deepbook: {
     package_id: '0x000000000000000000000000000000000000000000000000000000000000dee9',

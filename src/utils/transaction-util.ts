@@ -922,7 +922,7 @@ export class TransactionUtil {
     tx.setGasBudget(100000000)
 
     const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { distribution_cfg, voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
     const functionName = 'vote'
@@ -933,7 +933,15 @@ export class TransactionUtil {
       type: 'u64',
     })
 
-    const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(params.lockId), pools, weights, tx.object(CLOCK_ADDRESS)]
+    const args = [
+      tx.object(distribution_cfg),
+      tx.object(voter_id),
+      tx.object(voting_escrow_id),
+      tx.object(params.lockId),
+      pools,
+      weights,
+      tx.object(CLOCK_ADDRESS),
+    ]
     tx.moveCall({
       target: `${integrate.published_at}::${Voter}::${functionName}`,
       typeArguments,
@@ -1009,12 +1017,18 @@ export class TransactionUtil {
     tx.setSender(sdk.senderAddress)
 
     const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { distribution_cfg, voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
     const functionName = 'poke'
 
-    const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(params.lockId), tx.object(CLOCK_ADDRESS)]
+    const args = [
+      tx.object(distribution_cfg),
+      tx.object(voter_id),
+      tx.object(voting_escrow_id),
+      tx.object(params.lockId),
+      tx.object(CLOCK_ADDRESS),
+    ]
     tx.moveCall({
       target: `${integrate.published_at}::${Voter}::${functionName}`,
       typeArguments,

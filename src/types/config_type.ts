@@ -55,6 +55,8 @@ export type MagmaConfigs = {
 
   reward_distributor_id: SuiObjectIdType
 
+  distribution_cfg: SuiObjectIdType
+
   minter_id: SuiObjectIdType
 }
 
