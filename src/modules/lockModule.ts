@@ -251,6 +251,62 @@ export class LockModule implements IModule {
     return locksInfo
   }
 
+  async aLockInfo(lockId: string): Promise<LockInfo> {
+    const aLockSummary = await this.aLockSummary(lockId)
+    const lockObj = await this._sdk.fullClient.getObject({
+      id: lockId,
+      options: {
+        showContent: true,
+        showDisplay: true,
+        showOwner: true,
+        showPreviousTransaction: true,
+        showStorageRebate: true,
+        showType: true,
+      },
+    })
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+
+    const poolIncentiveTokens = await this.getVotingBribeRewardTokens(lockId)
+
+    const incentiveTokens: string[] = []
+    poolIncentiveTokens.forEach((value, key) => {
+      incentiveTokens.push(...value)
+    })
+
+    const poolIncentiveRewards = await this.getPoolIncentiveRewrads(incentiveTokens, lockId)
+    const votingRewards = new Map<string, Coin[]>() // pool => rewardTokens
+    poolIncentiveRewards.forEach((value, coin) => {
+      value.forEach((amount, pool) => {
+        if (!votingRewards.has(pool)) {
+          votingRewards.set(pool, [])
+        }
+        votingRewards.get(pool)?.push({
+          kind: CoinType.Incentive,
+          token_addr: coin,
+          amount: amount.toString(),
+        })
+      })
+    })
+
+    const lockObjFields = lockObj.data.content.fields
+    const lockInfo: LockInfo = {
+      lock_id: lockId,
+      amount: lockObjFields.amount,
+      start: lockObjFields.start,
+      end: lockObjFields.end,
+      permanent: lockObjFields.permanent,
+
+      rebase_amount: {
+        kind: CoinType.RebaseCoin,
+        token_addr: magma_token,
+        amount: aLockSummary.reward_distributor_claimable,
+      },
+      voting_power: aLockSummary.voting_power,
+      voting_rewards: votingRewards,
+    }
+    return lockInfo
+  }
+
   async aLockSummary(lock_id: string): Promise<ALockSummary> {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions

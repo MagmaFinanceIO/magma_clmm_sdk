@@ -48,6 +48,10 @@ async function run_test() {
   }
 
   {
+    // LockInfo
+    const lockInfo = await magmaClmmSDK.Lock.aLockInfo(lockId)
+    console.log('summaryOfLock #####: ', lockInfo)
+
     // Summary of a lock
     const aLockSummary = await magmaClmmSDK.Lock.aLockSummary(lockId)
     console.log('summaryOfLock #####: ', aLockSummary)
