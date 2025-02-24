@@ -11,6 +11,7 @@ import { CachedContent, cacheTime24h, extractStructTagFromType, getFutureTime, p
 import { MagmaConfigs, ClmmConfig, CoinAsset, Package, SuiResource, SuiAddressType, TokenConfig } from './types'
 import { ConfigModule } from './modules'
 import { RpcModule } from './modules/rpcModule'
+import { GaugeModule } from './modules/gauge'
 
 /**
  * Represents options and configurations for an SDK.
@@ -115,6 +116,8 @@ export class MagmaClmmSDK {
    */
   protected _lock: LockModule
 
+  protected _gauge: GaugeModule
+
   /**
    * Provide interact  with a position rewarder interface.
    */
@@ -159,6 +162,7 @@ export class MagmaClmmSDK {
 
     this._swap = new SwapModule(this)
     this._lock = new LockModule(this)
+    this._gauge = new GaugeModule(this)
     this._pool = new PoolModule(this)
     this._position = new PositionModule(this)
     this._rewarder = new RewarderModule(this)
@@ -197,6 +201,10 @@ export class MagmaClmmSDK {
   /* */
   get Lock(): LockModule {
     return this._lock
+  }
+
+  get Gauge(): GaugeModule {
+    return this._gauge
   }
 
   /**

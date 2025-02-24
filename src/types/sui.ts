@@ -34,6 +34,8 @@ export const ClmmIntegrateUtilsModule = 'utils'
 export const VotingEscrow = 'voting_escrow'
 export const Voter = 'voter'
 export const RewardDistributor = 'reward_distributor'
+export const Gauge = 'gauge'
+export const Minter = 'minter'
 
 /**
  * The address for CoinInfo module.

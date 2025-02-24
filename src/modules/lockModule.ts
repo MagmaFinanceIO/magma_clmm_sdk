@@ -1,4 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions'
+import { ClmmpoolsError, LockErrorCode } from '../errors/errors'
 import {
   CreateLockParams,
   IncreaseLockAmountParams,
@@ -20,7 +21,6 @@ import { checkInvalidSuiAddress, extractStructTagFromType, getObjectFields } fro
 import { IModule } from '../interfaces/IModule'
 import { MagmaClmmSDK } from '../sdk'
 import { TransactionUtil } from '../utils/transaction-util'
-import { ClmmpoolsError, LockErrorCode, PoolErrorCode } from 'src/errors/errors'
 
 type LocksInfo = {
   owner: string
@@ -70,6 +70,11 @@ type ALockSummary = {
   fee_incentive_total: string
   reward_distributor_claimable: string
   voting_power: string
+}
+
+export type AddBribeReward = {
+  amount: string
+  coinType: string
 }
 
 export class LockModule implements IModule {
@@ -181,6 +186,29 @@ export class LockModule implements IModule {
       throw Error('this config sdk senderAddress is empty')
     }
     return TransactionUtil.buildPoke(this.sdk, params)
+  }
+
+  async addBribeReward(params: AddBribeReward): Promise<Transaction> {
+    if (this._sdk.senderAddress.length === 0) {
+      throw Error('this config sdk senderAddress is empty')
+    }
+
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+
+    const { integrate } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token, params.coinType]
+    const allCoinAsset = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    const coinInput = TransactionUtil.buildCoinForAmount(tx, allCoinAsset, BigInt(params.amount), params.coinType, false, true)
+
+    const args = [tx.object(voter_id), coinInput.targetCoin, tx.object(CLOCK_ADDRESS)]
+    tx.moveCall({
+      target: `${integrate.published_at}::${Voter}::add_bribe_reward`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
   }
 
   async claimVotingBribe(locks: string[], incentive_tokens: string[]): Promise<Transaction> {
@@ -467,15 +495,15 @@ export class LockModule implements IModule {
 
     const args = [tx.object(voter_id), tx.object(lock_id)]
 
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
     tx.moveCall({
       target: `${integrate.published_at}::${Voter}::get_voting_fee_reward_tokens`,
       arguments: args,
       typeArguments,
     })
 
-    if (!checkInvalidSuiAddress(simulationAccount.address)) {
-      throw Error('this config simulationAccount is not set right')
-    }
     const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
       transactionBlock: tx,
       sender: simulationAccount.address,

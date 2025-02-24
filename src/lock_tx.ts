@@ -258,5 +258,25 @@ async function test_panter() {
   console.log('swap: ', transferTxn)
 }
 
+async function pool_gauge() {
+  const magmaClmmSDK = initMagmaSDK({
+    network: 'mainnet',
+    // fullNodeUrl: 'http://192.168.3.64:9000',
+    simulationAccount: '',
+  })
+  const res = await magmaClmmSDK.Gauge.getPoolGaguers()
+  console.log('poolGauges: ', res)
+
+  const pools = [
+    '0x3c8d067cb266071bee84e60ca249257e9966ef5be42bd8cafb2c2f59402bc4c5',
+    '0x8faa061cbec3a3208255f1c4d00f97fc6e542807d259d931d3af4a02ccdbe3fe',
+  ]
+  const pool_coins = await magmaClmmSDK.Gauge.getPoolCoins(pools)
+
+  // magmaClmmSDK.Lock.addBribeReward(params)
+}
+
 // test_panter()
 run_test()
+
+pool_gauge()

@@ -919,7 +919,6 @@ export class TransactionUtil {
   static buildVoteTransaction(sdk: SDK, params: VoteParams): Transaction {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
-    tx.setGasBudget(100000000)
 
     const { integrate } = sdk.sdkOptions
     const { distribution_cfg, voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)

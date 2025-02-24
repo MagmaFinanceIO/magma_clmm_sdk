@@ -49,7 +49,7 @@ export const clmmMainnet: SdkOptions = {
   },
   integrate: {
     package_id: '0x6e3ae31a16362c563c0fef5293348d262646882a10c307f20f6be8577960f1ef',
-    published_at: '0x6e3ae31a16362c563c0fef5293348d262646882a10c307f20f6be8577960f1ef',
+    published_at: '0xba2255e57f407e1e171f0bacd54d9e743bb12e3e9bb9d51a41a362749b9e51c2',
   },
   deepbook: {
     package_id: '0x000000000000000000000000000000000000000000000000000000000000dee9',
