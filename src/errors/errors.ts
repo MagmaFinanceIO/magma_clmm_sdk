@@ -48,6 +48,11 @@ export enum PoolErrorCode {
   PoolsNotFound = `PoolsNotFound`,
 }
 
+export enum LockErrorCode {
+  InvalidLockObject = `InvalidLockObject`,
+  InvalidLockFields = `InvalidLockFields`,
+}
+
 export enum PartnerErrorCode {
   NotFoundPartnerObject = `NotFoundPartnerObject`,
   InvalidParnterRefFeeFields = `InvalidParnterRefFeeFields`,
@@ -92,6 +97,7 @@ export type ClmmpoolsErrorCode =
   | UtilsErrorCode
   | RouterErrorCode
   | TypesErrorCode
+  | LockErrorCode
 
 export class ClmmpoolsError extends Error {
   override message: string

@@ -16,10 +16,11 @@ import {
   getPackagerConfigs,
   Voter,
 } from '../types'
-import { checkInvalidSuiAddress, extractStructTagFromType } from '../utils'
+import { checkInvalidSuiAddress, extractStructTagFromType, getObjectFields } from '../utils'
 import { IModule } from '../interfaces/IModule'
 import { MagmaClmmSDK } from '../sdk'
 import { TransactionUtil } from '../utils/transaction-util'
+import { ClmmpoolsError, LockErrorCode, PoolErrorCode } from 'src/errors/errors'
 
 type LocksInfo = {
   owner: string
@@ -288,13 +289,20 @@ export class LockModule implements IModule {
       })
     })
 
-    const lockObjFields = lockObj.data.content.fields
+    if (lockObj.error != null || lockObj.data?.content?.dataType !== 'moveObject') {
+      throw new ClmmpoolsError(
+        `getPool error code: ${lockObj.error?.code ?? 'unknown error'}, please check config and object id`,
+        LockErrorCode.InvalidLockObject
+      )
+    }
+    const fields = getObjectFields(lockObj)
+
     const lockInfo: LockInfo = {
       lock_id: lockId,
-      amount: lockObjFields.amount,
-      start: lockObjFields.start,
-      end: lockObjFields.end,
-      permanent: lockObjFields.permanent,
+      amount: fields.amount,
+      start: fields.start,
+      end: fields.end,
+      permanent: fields.permanent,
 
       rebase_amount: {
         kind: CoinType.RebaseCoin,
