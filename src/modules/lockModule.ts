@@ -73,6 +73,7 @@ type ALockSummary = {
 }
 
 export type AddBribeReward = {
+  poolId: string
   amount: string
   coinType: string
 }
@@ -202,7 +203,7 @@ export class LockModule implements IModule {
     const allCoinAsset = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
     const coinInput = TransactionUtil.buildCoinForAmount(tx, allCoinAsset, BigInt(params.amount), params.coinType, false, true)
 
-    const args = [tx.object(voter_id), coinInput.targetCoin, tx.object(CLOCK_ADDRESS)]
+    const args = [tx.object(voter_id), tx.object(params.poolId), coinInput.targetCoin, tx.object(CLOCK_ADDRESS)]
     tx.moveCall({
       target: `${integrate.published_at}::${Voter}::add_bribe_reward`,
       typeArguments,
