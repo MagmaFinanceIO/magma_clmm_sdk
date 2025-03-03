@@ -20,6 +20,8 @@ export type WithdrawPosition = {
 export type EpochEmission = {
   emission: number | string
   rebase: number | string
+  total_supply: number | string
+  total_locked: number | string
 }
 
 export class GaugeModule implements IModule {
@@ -221,11 +223,15 @@ export class GaugeModule implements IModule {
     let res: EpochEmission = {
       emission: 0,
       rebase: 0,
+      total_supply: 0,
+      total_locked: 0,
     }
     simulateRes.events?.forEach((item: any) => {
       res = {
         emission: item.parsedJson.emission,
         rebase: item.parsedJson.rebase,
+        total_supply: item.parsedJson.total_supply,
+        total_locked: item.parsedJson.total_locked,
       }
     })
 
