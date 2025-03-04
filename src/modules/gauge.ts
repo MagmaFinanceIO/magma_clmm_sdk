@@ -1,9 +1,19 @@
 import { Transaction } from '@mysten/sui/transactions'
-import { CLOCK_ADDRESS, DepositPosition, EpochEmission, Gauge, getPackagerConfigs, Minter, StakedPositionOfPool, Voter, WithdrawPosition } from '../types'
+import {
+  CLOCK_ADDRESS,
+  DepositPosition,
+  EpochEmission,
+  Gauge,
+  getPackagerConfigs,
+  GetRewardByPosition,
+  Minter,
+  StakedPositionOfPool,
+  Voter,
+  WithdrawPosition,
+} from '../types'
 import { IModule } from '../interfaces/IModule'
 import { MagmaClmmSDK } from '../sdk'
 import { asIntN, extractStructTagFromType, getObjectType } from '../utils'
-
 
 export class GaugeModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -86,8 +96,8 @@ export class GaugeModule implements IModule {
 
       const stakedPositionOfPool = await this.getUserStakedPositionInfoOfPool(userAddr, pool, gauger, coins[0], coins[1])
       console.log('stakedPositionOfPool', stakedPositionOfPool)
-      stakedPositionOfPool.forEach(value => {
-        (value.infos as any[]).forEach(info => {
+      stakedPositionOfPool.forEach((value) => {
+        ;(value.infos as any[]).forEach((info) => {
           res.push({
             coin_type_a: coins[0],
             coin_type_b: coins[1],
@@ -98,7 +108,7 @@ export class GaugeModule implements IModule {
             magma_distribution_staked: info.info.magma_distribution_staked,
             pool: info.pool_id,
             earned: info.earned,
-            name: info.name
+            name: info.name,
           })
         })
       })
@@ -230,6 +240,62 @@ export class GaugeModule implements IModule {
         rebase: item.parsedJson.rebase,
         total_supply: item.parsedJson.total_supply,
         total_locked: item.parsedJson.total_locked,
+      }
+    })
+
+    return res
+  }
+
+  async getRewardByPosition(params: GetRewardByPosition): Promise<Transaction> {
+    const tx = new Transaction()
+    const { integrate } = this.sdk.sdkOptions
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+
+    const typeArguments = [params.coinTypeA, params.coinTypeB, magma_token]
+    const args = [tx.object(params.gaugeId), tx.object(params.poolId), tx.object(params.positionId), tx.object(CLOCK_ADDRESS)]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${Gauge}::get_reward_by_position`,
+      arguments: args,
+      typeArguments,
+    })
+    return tx
+  }
+
+  async getEpochRewardByPool(pool: string, incentive_tokens: string[]): Promise<Map<string, string>> {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+
+    const typeArguments = [magma_token, ...incentive_tokens]
+
+    const args = [tx.object(voter_id), tx.object(pool), tx.object(CLOCK_ADDRESS)]
+
+    let targetFunc = `${integrate.published_at}::${Voter}::epoch_reward_by_pool${incentive_tokens.length}`
+    if (incentive_tokens.length === 1) {
+      targetFunc = `${integrate.published_at}::${Voter}::epoch_reward_by_pool`
+    }
+
+    tx.moveCall({
+      target: targetFunc,
+      arguments: args,
+      typeArguments,
+    })
+
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    if (simulateRes.error != null) {
+      throw new Error(`getEpochRewardByPool error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+
+    const res = new Map<string, string>()
+
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `EventPoolIncentivesAmount`) {
+        res.set(item.parsedJson.token, item.parsedJson.amount)
       }
     })
 
