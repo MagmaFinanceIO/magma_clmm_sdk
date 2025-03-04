@@ -648,7 +648,7 @@ export class LockModule implements IModule {
     })
 
     if (simulateRes.error != null) {
-      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`getPoolBribeRewardTokens error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
     const poolBirbeRewardTokens = new Map<string, string[]>()

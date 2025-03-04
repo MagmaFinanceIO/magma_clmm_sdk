@@ -1,28 +1,9 @@
 import { Transaction } from '@mysten/sui/transactions'
-import { CLOCK_ADDRESS, Gauge, getPackagerConfigs, Minter, Voter } from '../types'
+import { CLOCK_ADDRESS, DepositPosition, EpochEmission, Gauge, getPackagerConfigs, Minter, StakedPositionOfPool, Voter, WithdrawPosition } from '../types'
 import { IModule } from '../interfaces/IModule'
 import { MagmaClmmSDK } from '../sdk'
-import { extractStructTagFromType, getObjectType } from '../utils'
+import { asIntN, extractStructTagFromType, getObjectType } from '../utils'
 
-export type DepositPosition = {
-  poolId: string
-  positionId: string
-  coinTypeA: string
-  coinTypeB: string
-}
-export type WithdrawPosition = {
-  poolId: string
-  positionId: string
-  coinTypeA: string
-  coinTypeB: string
-}
-
-export type EpochEmission = {
-  emission: number | string
-  rebase: number | string
-  total_supply: number | string
-  total_locked: number | string
-}
 
 export class GaugeModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -91,11 +72,11 @@ export class GaugeModule implements IModule {
     return tx
   }
 
-  async getUserStakedPositionInfo(userAddr: string) {
+  async getUserStakedPositionInfo(userAddr: string): Promise<StakedPositionOfPool[]> {
     const poolGauger = await this.getPoolGaguers()
     const poolCoins = await this.getPoolCoins([...poolGauger.keys()])
 
-    const res: any[] = []
+    const res: StakedPositionOfPool[] = []
     for (const [pool, gauger] of poolGauger) {
       const coins = poolCoins.get(pool)
       if (coins === undefined) {
@@ -104,7 +85,23 @@ export class GaugeModule implements IModule {
       }
 
       const stakedPositionOfPool = await this.getUserStakedPositionInfoOfPool(userAddr, pool, gauger, coins[0], coins[1])
-      res.push(...stakedPositionOfPool)
+      console.log('stakedPositionOfPool', stakedPositionOfPool)
+      stakedPositionOfPool.forEach(value => {
+        (value.infos as any[]).forEach(info => {
+          res.push({
+            coin_type_a: coins[0],
+            coin_type_b: coins[1],
+            liquidity: info.info.liquidity,
+            tick_lower_index: asIntN(BigInt(info.info.tick_lower_index.bits)),
+            tick_upper_index: asIntN(BigInt(info.info.tick_upper_index.bits)),
+            pos_object_id: info.info.position_id,
+            magma_distribution_staked: info.info.magma_distribution_staked,
+            pool: info.pool_id,
+            earned: info.earned,
+            name: info.name
+          })
+        })
+      })
     }
 
     return res
@@ -115,7 +112,7 @@ export class GaugeModule implements IModule {
     const { integrate, simulationAccount } = this.sdk.sdkOptions
     const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
 
-    const typeArguments = [magma_token, poolCoinA, poolCoinB]
+    const typeArguments = [poolCoinA, poolCoinB, magma_token]
 
     const args = [tx.object(voter_id), tx.object(gauger), tx.object(pool), tx.pure.address(userAddr), tx.object(CLOCK_ADDRESS)]
 
@@ -131,10 +128,11 @@ export class GaugeModule implements IModule {
     })
 
     if (simulateRes.error != null) {
-      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`user_staked_position_infos error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
     const res: any[] = []
+
     simulateRes.events?.forEach((item: any) => {
       res.push(item.parsedJson)
     })
@@ -162,7 +160,7 @@ export class GaugeModule implements IModule {
     })
 
     if (simulateRes.error != null) {
-      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`getPoolGaguers error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
     const poolGauger = new Map<string, string>()
@@ -191,7 +189,7 @@ export class GaugeModule implements IModule {
       const type = getObjectType(item) as string
       const poolTypeFields = extractStructTagFromType(type)
 
-      poolCoins.set(poolTypeFields.address, poolTypeFields.type_arguments)
+      poolCoins.set(item.data.objectId, poolTypeFields.type_arguments)
     })
     return poolCoins
   }
