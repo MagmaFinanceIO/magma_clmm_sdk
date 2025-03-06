@@ -78,6 +78,13 @@ export type AddBribeReward = {
   coinType: string
 }
 
+export type LockEvent = {
+  lock_id: string
+  last_voted_at: string
+  pools: string[]
+  votes: string[]
+}
+
 export class LockModule implements IModule {
   protected _sdk: MagmaClmmSDK
 
@@ -780,5 +787,49 @@ export class LockModule implements IModule {
       }
     })
     return poolBirbeRewardTokens
+  }
+
+  async getLockVotingStats(lockId: string) {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+
+    const args = [tx.object(voter_id), tx.object(lockId), tx.object(CLOCK_ADDRESS)]
+    const typeArguments = [magma_token]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${Voter}::lock_voting_stats`,
+      arguments: args,
+      typeArguments,
+    })
+
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+    if (simulateRes.error != null) {
+      throw new Error(` error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+
+    let res: LockEvent = {
+      lock_id: '',
+      last_voted_at: '',
+      pools: [],
+      votes: [],
+    }
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `EventLockVotingStats`) {
+        res = {
+          lock_id: item.parsedJson.lock_id,
+          last_voted_at: item.parsedJson.last_voted_at,
+          pools: item.parsedJson.pools,
+          votes: item.parsedJson.votes,
+        }
+      }
+    })
+    return res
   }
 }
