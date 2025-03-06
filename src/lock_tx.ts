@@ -196,7 +196,7 @@ async function run_test() {
       incentiveTokens.push(...value)
     })
     // 17. Get pool's incentive token reward amount
-    const poolIncentiveRewards = await magmaClmmSDK.Lock.getPoolIncentiveRewrads(incentiveTokens, lockId)
+    const poolIncentiveRewards = await magmaClmmSDK.Lock.getPoolIncentiveRewards(lockId, incentiveTokens)
     console.log('poolIncentiveRewards #####: ', poolIncentiveRewards)
 
     {

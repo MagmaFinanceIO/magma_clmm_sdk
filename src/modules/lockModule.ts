@@ -46,7 +46,7 @@ type LockInfo = {
 
   rebase_amount: Coin
   voting_power: string
-  voting_rewards: Map<string, Coin[]> // pool => incentiveTokenAmount
+  voting_rewards: Map<string, Coin[]> // pool => incentiveTokenAmount / feeTokenAmount
 }
 
 type Coin = {
@@ -237,14 +237,20 @@ export class LockModule implements IModule {
 
       const aLockSummary = await this.aLockSummary(fields.id.id)
       const poolIncentiveTokens = await this.getVotingBribeRewardTokens(fields.id.id)
+      const poolFeeTokens = await this.getVotingFeeRewardTokens(fields.id.id)
 
       const incentiveTokens: string[] = []
       poolIncentiveTokens.forEach((value, key) => {
         incentiveTokens.push(...value)
       })
 
+      const feeTokens: string[] = []
+      poolFeeTokens.forEach((value, key) => {
+        feeTokens.push(...value)
+      })
+
       // coin => pool => amount
-      const poolIncentiveRewards = await this.getPoolIncentiveRewrads(incentiveTokens, fields.id.id)
+      const poolIncentiveRewards = await this.getPoolIncentiveRewards(fields.id.id, incentiveTokens)
       const votingRewards = new Map<string, Coin[]>() // pool => rewardTokens
       poolIncentiveRewards.forEach((value, coin) => {
         value.forEach((amount, pool) => {
@@ -253,6 +259,21 @@ export class LockModule implements IModule {
           }
           votingRewards.get(pool)?.push({
             kind: CoinType.Incentive,
+            token_addr: coin,
+            amount: amount.toString(),
+          })
+        })
+      })
+
+      const poolFeeRewards = await this.getPoolFeeRewards(fields.id.id, feeTokens)
+      // const feeRewards = new Map<string, Coin[]>()
+      poolFeeRewards.forEach((value, coin) => {
+        value.forEach((amount, pool) => {
+          if (!votingRewards.has(pool)) {
+            votingRewards.set(pool, [])
+          }
+          votingRewards.get(pool)?.push({
+            kind: CoinType.Fee,
             token_addr: coin,
             amount: amount.toString(),
           })
@@ -272,7 +293,7 @@ export class LockModule implements IModule {
           amount: aLockSummary.reward_distributor_claimable,
         },
         voting_power: aLockSummary.voting_power,
-        // pool => incentive => amount
+        // pool => incentive/fee => amount
         voting_rewards: votingRewards,
       }
 
@@ -282,7 +303,6 @@ export class LockModule implements IModule {
   }
 
   async aLockInfo(lockId: string): Promise<LockInfo> {
-    const aLockSummary = await this.aLockSummary(lockId)
     const lockObj = await this._sdk.fullClient.getObject({
       id: lockId,
       options: {
@@ -294,16 +314,30 @@ export class LockModule implements IModule {
         showType: true,
       },
     })
+    if (lockObj.error != null || lockObj.data?.content?.dataType !== 'moveObject') {
+      throw new ClmmpoolsError(
+        `getPool error code: ${lockObj.error?.code ?? 'unknown error'}, please check config and object id`,
+        LockErrorCode.InvalidLockObject
+      )
+    }
+
     const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
 
+    const aLockSummary = await this.aLockSummary(lockId)
     const poolIncentiveTokens = await this.getVotingBribeRewardTokens(lockId)
+    const poolFeeTokens = await this.getVotingFeeRewardTokens(lockId)
 
     const incentiveTokens: string[] = []
     poolIncentiveTokens.forEach((value, key) => {
       incentiveTokens.push(...value)
     })
 
-    const poolIncentiveRewards = await this.getPoolIncentiveRewrads(incentiveTokens, lockId)
+    const feeTokens: string[] = []
+    poolFeeTokens.forEach((value, key) => {
+      feeTokens.push(...value)
+    })
+
+    const poolIncentiveRewards = await this.getPoolIncentiveRewards(lockId, incentiveTokens)
     const votingRewards = new Map<string, Coin[]>() // pool => rewardTokens
     poolIncentiveRewards.forEach((value, coin) => {
       value.forEach((amount, pool) => {
@@ -318,12 +352,21 @@ export class LockModule implements IModule {
       })
     })
 
-    if (lockObj.error != null || lockObj.data?.content?.dataType !== 'moveObject') {
-      throw new ClmmpoolsError(
-        `getPool error code: ${lockObj.error?.code ?? 'unknown error'}, please check config and object id`,
-        LockErrorCode.InvalidLockObject
-      )
-    }
+    const poolFeeRewards = await this.getPoolFeeRewards(lockId, feeTokens)
+    // const feeRewards = new Map<string, Coin[]>()
+    poolFeeRewards.forEach((value, coin) => {
+      value.forEach((amount, pool) => {
+        if (!votingRewards.has(pool)) {
+          votingRewards.set(pool, [])
+        }
+        votingRewards.get(pool)?.push({
+          kind: CoinType.Fee,
+          token_addr: coin,
+          amount: amount.toString(),
+        })
+      })
+    })
+
     const fields = getObjectFields(lockObj)
 
     const lockInfo: LockInfo = {
@@ -573,12 +616,83 @@ export class LockModule implements IModule {
     return poolBirbeRewardTokens
   }
 
-  // tokenId => pool => incentive_tokens
-  async getPoolIncentiveRewrads(incentive_tokens: string[], locksId: string) {
-    // tokenId => pool => incentive_tokens
-    const poolBirbeRewardTokens = new Map<string, Map<string, string>>()
+  async getPoolFeeRewards(lock_id: string, tokens: string[]) {
+    const poolFeeRewardTokens = new Map<string, Map<string, string>>()
+
+    if (tokens.length === 0) {
+      return poolFeeRewardTokens
+    }
+    if (tokens.length % 2 !== 0) {
+      tokens.push(tokens[0])
+    }
+    for (let i = 0; i + 1 < tokens.length; i += 2) {
+      await this._getPoolFeeRewards(lock_id, tokens[i], tokens[i + 1], poolFeeRewardTokens)
+    }
+    return poolFeeRewardTokens
+  }
+
+  // if you have many tokens, call this function multi times
+  async _getPoolFeeRewards(lock_id: string, token_a: string, token_b: string, poolFeeRewardTokens: Map<string, Map<string, string>>) {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token, token_a, token_b]
+
+    const args = [tx.object(voter_id), tx.object(lock_id), tx.object(CLOCK_ADDRESS)]
+    const targetFunc = `${integrate.published_at}::${Voter}::claimable_voting_fee_rewards`
+
+    tx.moveCall({
+      target: targetFunc,
+      arguments: args,
+      typeArguments,
+    })
+
+    if (!checkInvalidSuiAddress(simulationAccount.address)) {
+      throw Error('this config simulationAccount is not set right')
+    }
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+    if (simulateRes.error != null) {
+      throw new Error(`getPoolFeeRewards error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `ClaimableVotingFee`) {
+        item.parsedJson.data.contents.forEach((rewardTokens: any) => {
+          if (!poolFeeRewardTokens.has(rewardTokens.key.name)) {
+            poolFeeRewardTokens.set(rewardTokens.key.name, new Map<string, string>())
+          }
+
+          rewardTokens.value.contents.forEach((token: any) => {
+            poolFeeRewardTokens.get(rewardTokens.key.name)?.set(token.key, token.value)
+          })
+        })
+      }
+    })
+    return poolFeeRewardTokens
+  }
+
+  async getPoolIncentiveRewards(lock_id: string, incentive_tokens: string[]) {
+    const poolBribeRewardTokens = new Map<string, Map<string, string>>()
     if (incentive_tokens.length === 0) {
-      return poolBirbeRewardTokens
+      return poolBribeRewardTokens
+    }
+    let i = 0
+    for (; i + 3 < incentive_tokens.length; i += 3) {
+      await this._getPoolIncentiveRewards(lock_id, incentive_tokens.slice(i, i + 3), poolBribeRewardTokens)
+    }
+    await this._getPoolIncentiveRewards(lock_id, incentive_tokens.slice(i), poolBribeRewardTokens)
+
+    return poolBribeRewardTokens
+  }
+
+  // tokenId => pool => incentive_tokens
+  async _getPoolIncentiveRewards(locksId: string, incentive_tokens: string[], poolBribeRewardTokens: Map<string, Map<string, string>>) {
+    // tokenId => pool => incentive_tokens
+    if (incentive_tokens.length > 3) {
+      throw Error('Too many tokens')
     }
 
     const tx = new Transaction()
@@ -607,23 +721,23 @@ export class LockModule implements IModule {
     })
 
     if (simulateRes.error != null) {
-      throw new Error(`all_lock_summary error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`getPoolIncentiveRewards error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `ClaimableVotingBribes`) {
         item.parsedJson.data.contents.forEach((rewardTokens: any) => {
-          if (!poolBirbeRewardTokens.has(rewardTokens.key.name)) {
-            poolBirbeRewardTokens.set(rewardTokens.key.name, new Map<string, string>())
+          if (!poolBribeRewardTokens.has(rewardTokens.key.name)) {
+            poolBribeRewardTokens.set(rewardTokens.key.name, new Map<string, string>())
           }
 
           rewardTokens.value.contents.forEach((token: any) => {
-            poolBirbeRewardTokens.get(rewardTokens.key.name)?.set(token.key, token.value)
+            poolBribeRewardTokens.get(rewardTokens.key.name)?.set(token.key, token.value)
           })
         })
       }
     })
-    return poolBirbeRewardTokens
+    return poolBribeRewardTokens
   }
 
   async getPoolBribeRewardTokens(pool_id: string) {
