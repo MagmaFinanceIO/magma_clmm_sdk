@@ -17,13 +17,13 @@ const SDKConfig = {
     launchpad_pools_handle: '0x5e194a8efcf653830daf85a85b52e3ae8f65dc39481d54b2382acda25068375c',
     clmm_pools_handle: '0x37f60eb2d9d227949b95da8fea810db3c32d1e1fa8ed87434fc51664f87d83cb',
 
-    global_config_id: '0x4f32c00706e7bdbce532acdcfc0afd91b14defd5ffc9e2723a0ce7ed84f5d380',
-    voter_id: '0xe8e0c266602404caa463f85bee4ccf6000c8c2566204a3949400a06857295ceb',
-    voting_escrow_id: '0x143aab8c7c13c58a94d99ae281b4226f1877abc21bc01b9d75b58a7217fc3b2c',
-    reward_distributor_id: '0x93bf24d3db08f93a02ba90abc7095f8d8086e5a1f72bac8bd866df21defe83ab',
-    distribution_cfg: '0x94e23846c975e2faf89a61bfc2b10ad64decab9069eb1f9fc39752b010868c74',
-    magma_token: '0x3abcdefce1a0ec1252237b69efc6dc3881325d543fceaad2e2f360a02d2f5bd9::magma_token::MAGMA_TOKEN',
-    minter_id: '0x92877b638c3febf8576d0d7caebf9a2c43753b2e441669fb434e709458ece345',
+    global_config_id: '0x4c4e1402401f72c7d8533d0ed8d5f8949da363c7a3319ccef261ffe153d32f8a',
+    voter_id: '0xaab0f3a90da96d29d743e09c269e1ae48ec1bae52a28cd38c49c5dc8c1bf92b8',
+    voting_escrow_id: '0x7ab45fbe01da26e07ba21757916d540c8747cf7daa88f3171e13db17373d5adc',
+    reward_distributor_id: '0x9f4f882245e49fd9213278dfbcb63a14fdbdd2ce7e25e9353a0cecdca30de853',
+    distribution_cfg: '0xaff8d151ac29317201151f97d28c546b3c5923d8cfc5499f40dea61c4022c949',
+    magma_token: '0x7161c6c6bb65f852797c8f7f5c4f8d57adaf796e1b840921f9e23fabeadfd54e::magma::MAGMA',
+    minter_id: '0x4fa5766cd83b33b215b139fec27ac344040f3bbd84fcbee7b61fc671aadc51fa',
   },
 }
 
@@ -44,12 +44,12 @@ export const clmmMainnet: SdkOptions = {
     config: SDKConfig.clmmConfig,
   },
   distribution: {
-    package_id: '0x3abcdefce1a0ec1252237b69efc6dc3881325d543fceaad2e2f360a02d2f5bd9',
-    published_at: '0x3abcdefce1a0ec1252237b69efc6dc3881325d543fceaad2e2f360a02d2f5bd9',
+    package_id: '0xee4a1f231dc45a303389998fe26c4e39278cf68b404b32e4f0b9769129b8267b',
+    published_at: '0xee4a1f231dc45a303389998fe26c4e39278cf68b404b32e4f0b9769129b8267b',
   },
   integrate: {
-    package_id: '0x6e3ae31a16362c563c0fef5293348d262646882a10c307f20f6be8577960f1ef',
-    published_at: '0xba2255e57f407e1e171f0bacd54d9e743bb12e3e9bb9d51a41a362749b9e51c2',
+    package_id: '0x2e704d8afc1d6d7f154dee337cc14c153f6f9ce1708213e5dc04a32afe0e45f1',
+    published_at: '0x2e704d8afc1d6d7f154dee337cc14c153f6f9ce1708213e5dc04a32afe0e45f1',
   },
   deepbook: {
     package_id: '0x000000000000000000000000000000000000000000000000000000000000dee9',
