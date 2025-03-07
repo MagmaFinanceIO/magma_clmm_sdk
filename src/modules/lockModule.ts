@@ -78,7 +78,7 @@ export type AddBribeReward = {
   coinType: string
 }
 
-export type LockEvent = {
+export type LockVoteEvent = {
   lock_id: string
   last_voted_at: string
   pools: string[]
@@ -224,6 +224,39 @@ export class LockModule implements IModule {
       throw Error('this config sdk senderAddress is empty')
     }
     return TransactionUtil.buildClaimVotingBribe(this.sdk, locks, incentive_tokens)
+  }
+
+  async claimVotingFeeAndBribeForPool(
+    lockId: string,
+    poolId: string,
+    feeTokens: string[],
+    incentiveTokens: string[]
+  ): Promise<Transaction> {
+    if (feeTokens.length !== 2) {
+      throw Error('feeTokens length must be 2')
+    }
+    if (incentiveTokens.length < 1 || incentiveTokens.length > 3) {
+      throw Error('incentiveTokens length must be between 1 and 3')
+    }
+
+    const { integrate } = this.sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token, ...feeTokens, ...incentiveTokens]
+
+    let targetFunc = `${integrate.published_at}::${Voter}::claim_voting_bribes_for_single_pool${incentiveTokens.length}`
+    if (incentiveTokens.length === 1) {
+      targetFunc = `${integrate.published_at}::${Voter}::claim_voting_bribes_for_single_pool`
+    }
+
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+    const args = [tx.object(voter_id), tx.object(voting_escrow_id), tx.object(lockId), tx.object(poolId), tx.object(CLOCK_ADDRESS)]
+    tx.moveCall({
+      target: targetFunc,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
   }
 
   async locksOfUser(user: string): Promise<LocksInfo> {
@@ -806,20 +839,23 @@ export class LockModule implements IModule {
     if (!checkInvalidSuiAddress(simulationAccount.address)) {
       throw Error('this config simulationAccount is not set right')
     }
+
     const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
       transactionBlock: tx,
       sender: simulationAccount.address,
     })
     if (simulateRes.error != null) {
-      throw new Error(` error code: ${simulateRes.error ?? 'unknown error'}`)
+      console.log(`error code: ${simulateRes.error ?? 'unknown error'}`)
+      return null
     }
 
-    let res: LockEvent = {
-      lock_id: '',
+    let res: LockVoteEvent = {
+      lock_id: lockId,
       last_voted_at: '',
       pools: [],
       votes: [],
     }
+
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventLockVotingStats`) {
         res = {

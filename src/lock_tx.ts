@@ -272,11 +272,19 @@ async function pool_gauge() {
     '0x8faa061cbec3a3208255f1c4d00f97fc6e542807d259d931d3af4a02ccdbe3fe',
   ]
   const pool_coins = await magmaClmmSDK.Gauge.getPoolCoins(pools)
+  console.log('####### pool_coins: ', pool_coins)
 
-  // magmaClmmSDK.Lock.addBribeReward(params)
+  const lockSummary = await magmaClmmSDK.Lock.aLockSummary('0x5ea39a59319987bdb7c9310dd51e33a435039a3b8844093f415da2650cc7fcee')
+  console.log('######## aLockSummary: ', lockSummary)
+
+  const lockInfo = await magmaClmmSDK.Lock.aLockInfo('0x5ea39a59319987bdb7c9310dd51e33a435039a3b8844093f415da2650cc7fcee')
+  console.log('######## aLockInfo: ', lockInfo)
+
+  const res2 = await magmaClmmSDK.Lock.getLockVotingStats('0x5ea39a59319987bdb7c9310dd51e33a435039a3b8844093f415da2650cc7fcee')
+  console.log('###### res: ', res2)
 }
 
 // test_panter()
-run_test()
+// run_test()
 
 pool_gauge()
