@@ -817,12 +817,21 @@ export class TransactionUtil {
     tx.setSender(sdk.senderAddress)
 
     const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { voter_id, voting_escrow_id, magma_token, distribution_cfg } = getPackagerConfigs(sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
     const functionName = 'merge_locks'
 
-    const args = [tx.object(voting_escrow_id), tx.object(params.fromLockId), tx.object(params.toLockId), tx.object(CLOCK_ADDRESS)]
+    // public entry fun merge_locks<T>(cfg: &DistributionConfig, ve: &mut VotingEscrow<T>, voter: &mut Voter<T>, merge_from: Lock, merge_into: &mut Lock, clock: &Clock, ctx: &mut TxContext) {
+
+    const args = [
+      tx.object(distribution_cfg),
+      tx.object(voting_escrow_id),
+      tx.object(voter_id),
+      tx.object(params.fromLockId),
+      tx.object(params.toLockId),
+      tx.object(CLOCK_ADDRESS),
+    ]
     tx.moveCall({
       target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
       typeArguments,
@@ -901,12 +910,71 @@ export class TransactionUtil {
     tx.setSender(sdk.senderAddress)
 
     const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
     const typeArguments = [magma_token]
 
     const functionName = 'unlock_permanent'
 
-    const args = [tx.object(voting_escrow_id), tx.object(params.lockId), tx.object(CLOCK_ADDRESS)]
+    const args = [
+      tx.object(distribution_cfg),
+      tx.object(voting_escrow_id),
+      tx.object(voter_id),
+      tx.object(params.lockId),
+      tx.object(CLOCK_ADDRESS),
+    ]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  static buildBurnLockTransaction(sdk: SDK, lockId: string) {
+    const tx = new Transaction()
+    tx.setSender(sdk.senderAddress)
+
+    const { integrate } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const functionName = 'burn_lock'
+
+    const args = [
+      tx.object(distribution_cfg),
+      tx.object(voting_escrow_id),
+      tx.object(voter_id),
+      tx.object(lockId),
+      tx.object(CLOCK_ADDRESS),
+    ]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  static buildSplitLockTransaction(sdk: SDK, lockId: string, splitAmount: bigint | number | string) {
+    const tx = new Transaction()
+    tx.setSender(sdk.senderAddress)
+
+    const { integrate } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const typeArguments = [magma_token]
+
+    const functionName = 'split_lock'
+
+    const args = [
+      tx.object(distribution_cfg),
+      tx.object(voting_escrow_id),
+      tx.object(voter_id),
+      tx.object(lockId),
+      tx.pure.u64(splitAmount),
+      tx.object(CLOCK_ADDRESS),
+    ]
 
     tx.moveCall({
       target: `${integrate.published_at}::${VotingEscrow}::${functionName}`,
