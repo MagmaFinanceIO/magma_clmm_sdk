@@ -822,8 +822,6 @@ export class TransactionUtil {
 
     const functionName = 'merge_locks'
 
-    // public entry fun merge_locks<T>(cfg: &DistributionConfig, ve: &mut VotingEscrow<T>, voter: &mut Voter<T>, merge_from: Lock, merge_into: &mut Lock, clock: &Clock, ctx: &mut TxContext) {
-
     const args = [
       tx.object(distribution_cfg),
       tx.object(voting_escrow_id),
