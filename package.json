@@ -10,6 +10,7 @@
     "test": "jest",
     "lint:fix": "eslint src/*.ts src/**/*.ts --fix",
     "build": "rm -rf dist/ && tsc",
+    "build:calc_dlmm": "bash calc_dlmm/build.sh",
     "testbuild": "tsc",
     "prepare": "husky install",
     "build:tsup": "npm run build:clean && npm run _build:node",
