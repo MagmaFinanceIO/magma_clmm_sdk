@@ -97,19 +97,23 @@ export class GaugeModule implements IModule {
       const stakedPositionOfPool = await this.getUserStakedPositionInfoOfPool(userAddr, pool, gauger, coins[0], coins[1])
       console.log('stakedPositionOfPool', stakedPositionOfPool)
       stakedPositionOfPool.forEach((value) => {
-        ;(value.infos as any[]).forEach((info) => {
-          res.push({
-            coin_type_a: coins[0],
-            coin_type_b: coins[1],
-            liquidity: info.info.liquidity,
-            tick_lower_index: asIntN(BigInt(info.info.tick_lower_index.bits)),
-            tick_upper_index: asIntN(BigInt(info.info.tick_upper_index.bits)),
-            pos_object_id: info.info.position_id,
-            magma_distribution_staked: info.info.magma_distribution_staked,
-            pool: info.pool_id,
-            earned: info.earned,
-            name: info.name,
-          })
+        ; (value.infos as any[]).forEach((info) => {
+          if (info.info) {
+            if (res.findIndex(position => position.pos_object_id === info.info.fields.position_id) === -1) {
+              res.push({
+                coin_type_a: coins[0],
+                coin_type_b: coins[1],
+                liquidity: info.info.fields.liquidity,
+                tick_lower_index: asIntN(BigInt(info.info.fields.tick_lower_index.fields.bits)),
+                tick_upper_index: asIntN(BigInt(info.info.fields.tick_upper_index.fields.bits)),
+                pos_object_id: info.info.fields.position_id,
+                magma_distribution_staked: info.info.fields.magma_distribution_staked,
+                pool: info.pool_id,
+                earned: info.earned,
+                name: info.name,
+              })
+            }
+          }
         })
       })
     }
@@ -176,7 +180,6 @@ export class GaugeModule implements IModule {
     const poolGauger = new Map<string, string>()
     simulateRes.events?.forEach((item: any) => {
       const { gauges } = item.parsedJson
-      console.log('parsedJson', item.parsedJson)
       item.parsedJson.pools.map((pool: string, index: string) => {
         poolGauger.set(pool, gauges[index])
       })

@@ -11,7 +11,7 @@ import { CachedContent, cacheTime24h, extractStructTagFromType, getFutureTime, p
 import { MagmaConfigs, ClmmConfig, CoinAsset, Package, SuiResource, SuiAddressType, TokenConfig } from './types'
 import { ConfigModule } from './modules'
 import { RpcModule } from './modules/rpcModule'
-import { GaugeModule } from './modules/gauge'
+import { GaugeModule } from './modules/gaugeModule'
 
 /**
  * Represents options and configurations for an SDK.

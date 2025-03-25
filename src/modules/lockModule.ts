@@ -189,6 +189,13 @@ export class LockModule implements IModule {
     return TransactionUtil.buildClaimAndLockRebases(this.sdk, params)
   }
 
+  async burnLockTransactionPayload(lockId: string): Promise<Transaction> {
+    if (this._sdk.senderAddress.length === 0) {
+      throw Error('this config sdk senderAddress is empty')
+    }
+    return TransactionUtil.buildBurnLockTransaction(this.sdk, lockId)
+  }
+
   async pokePayload(params: PokeParams): Promise<Transaction> {
     if (this._sdk.senderAddress.length === 0) {
       throw Error('this config sdk senderAddress is empty')
@@ -258,6 +265,49 @@ export class LockModule implements IModule {
     })
     return tx
   }
+  async fastLocksOfUser(user: string): Promise<LocksInfo> {
+    const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
+    const { distribution } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+
+    // all objects
+    const ownerRes = await this._sdk.fullClient.getOwnedObjectsByPage(user, {
+      options: { showType: true, showContent: true, showDisplay: true, showOwner: true },
+      filter: {
+        MatchAll: [{ Package: distribution.package_id }, { StructType: `${distribution.package_id}::voting_escrow::Lock` }],
+      },
+    })
+
+    for (const item of ownerRes.data as any[]) {
+      try {
+        const { fields } = item.data.content
+        const aLockSummary = await this.aLockSummary(fields.id.id)
+        const lockInfo: LockInfo = {
+          lock_id: fields.id.id,
+          amount: fields.amount,
+          start: fields.start,
+          end: fields.end,
+          permanent: fields.permanent,
+
+          rebase_amount: {
+            kind: CoinType.RebaseCoin,
+            token_addr: magma_token,
+            amount: aLockSummary.reward_distributor_claimable,
+          },
+          voting_power: aLockSummary.voting_power,
+          voting_rewards: new Map<string, Coin[]>()
+        }
+
+        locksInfo.lockInfo.push(lockInfo)
+      } catch (error) {
+        console.error('fastLocksOfUser error', error)
+
+      }
+
+    }
+    return locksInfo
+  }
+
 
   async locksOfUser(user: string): Promise<LocksInfo> {
     const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
@@ -273,71 +323,79 @@ export class LockModule implements IModule {
     })
 
     for (const item of ownerRes.data as any[]) {
-      const { fields } = item.data.content
+      try {
 
-      const aLockSummary = await this.aLockSummary(fields.id.id)
-      const poolIncentiveTokens = await this.getVotingBribeRewardTokens(fields.id.id)
-      const poolFeeTokens = await this.getVotingFeeRewardTokens(fields.id.id)
+        const { fields } = item.data.content
 
-      const incentiveTokens: string[] = []
-      poolIncentiveTokens.forEach((value, key) => {
-        incentiveTokens.push(...value)
-      })
+        const aLockSummary = await this.aLockSummary(fields.id.id)
+        const poolIncentiveTokens = await this.getVotingBribeRewardTokens(fields.id.id)
+        const poolFeeTokens = await this.getVotingFeeRewardTokens(fields.id.id)
 
-      const feeTokens: string[] = []
-      poolFeeTokens.forEach((value, key) => {
-        feeTokens.push(...value)
-      })
+        const incentiveTokens: string[] = []
+        poolIncentiveTokens.forEach((value, key) => {
+          incentiveTokens.push(...value)
+        })
 
-      // coin => pool => amount
-      const poolIncentiveRewards = await this.getPoolIncentiveRewards(fields.id.id, incentiveTokens)
-      const votingRewards = new Map<string, Coin[]>() // pool => rewardTokens
-      poolIncentiveRewards.forEach((value, coin) => {
-        value.forEach((amount, pool) => {
-          if (!votingRewards.has(pool)) {
-            votingRewards.set(pool, [])
-          }
-          votingRewards.get(pool)?.push({
-            kind: CoinType.Incentive,
-            token_addr: coin,
-            amount: amount.toString(),
+        const feeTokens: string[] = []
+        poolFeeTokens.forEach((value, key) => {
+          feeTokens.push(...value)
+        })
+
+        // coin => pool => amount
+        const poolIncentiveRewards = await this.getPoolIncentiveRewards(fields.id.id, incentiveTokens)
+        const votingRewards = new Map<string, Coin[]>() // pool => rewardTokens
+        poolIncentiveRewards.forEach((value, coin) => {
+          value.forEach((amount, pool) => {
+            if (!votingRewards.has(pool)) {
+              votingRewards.set(pool, [])
+            }
+            votingRewards.get(pool)?.push({
+              kind: CoinType.Incentive,
+              token_addr: coin,
+              amount: amount.toString(),
+            })
           })
         })
-      })
 
-      const poolFeeRewards = await this.getPoolFeeRewards(fields.id.id, feeTokens)
-      // const feeRewards = new Map<string, Coin[]>()
-      poolFeeRewards.forEach((value, coin) => {
-        value.forEach((amount, pool) => {
-          if (!votingRewards.has(pool)) {
-            votingRewards.set(pool, [])
-          }
-          votingRewards.get(pool)?.push({
-            kind: CoinType.Fee,
-            token_addr: coin,
-            amount: amount.toString(),
+        const poolFeeRewards = await this.getPoolFeeRewards(fields.id.id, feeTokens)
+        // const feeRewards = new Map<string, Coin[]>()
+        poolFeeRewards.forEach((value, coin) => {
+          value.forEach((amount, pool) => {
+            if (!votingRewards.has(pool)) {
+              votingRewards.set(pool, [])
+            }
+            votingRewards.get(pool)?.push({
+              kind: CoinType.Fee,
+              token_addr: coin,
+              amount: amount.toString(),
+            })
           })
         })
-      })
 
-      const lockInfo: LockInfo = {
-        lock_id: fields.id.id,
-        amount: fields.amount,
-        start: fields.start,
-        end: fields.end,
-        permanent: fields.permanent,
+        const lockInfo: LockInfo = {
+          lock_id: fields.id.id,
+          amount: fields.amount,
+          start: fields.start,
+          end: fields.end,
+          permanent: fields.permanent,
 
-        rebase_amount: {
-          kind: CoinType.RebaseCoin,
-          token_addr: magma_token,
-          amount: aLockSummary.reward_distributor_claimable,
-        },
-        voting_power: aLockSummary.voting_power,
-        // pool => incentive/fee => amount
-        voting_rewards: votingRewards,
+          rebase_amount: {
+            kind: CoinType.RebaseCoin,
+            token_addr: magma_token,
+            amount: aLockSummary.reward_distributor_claimable,
+          },
+          voting_power: aLockSummary.voting_power,
+          // pool => incentive/fee => amount
+          voting_rewards: votingRewards,
+        }
+
+        locksInfo.lockInfo.push(lockInfo)
+      } catch (error) {
+        console.error('locksOfUser error', error)
+
       }
 
-      locksInfo.lockInfo.push(lockInfo)
+
     }
     return locksInfo
   }
