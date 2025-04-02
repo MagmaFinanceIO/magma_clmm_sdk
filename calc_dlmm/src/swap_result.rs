@@ -3,6 +3,8 @@ use wasm_bindgen::prelude::*;
 use alloy_primitives::U256;
 use std::collections::HashMap;
 
+use crate::{constants, price, uint_safe};
+
 #[wasm_bindgen]
 pub struct DlmmPair {
     params: DlmmPairParameter,
@@ -319,29 +321,10 @@ mod full_math_u64 {
     }
 }
 
-mod constants {
-    use alloy_primitives::U256;
-
-    pub const SCALE_OFFSET: u8 = 128;
-    pub const MAX_LIQUIDITY_PER_BIN: u128 = 0;
-
-    pub const PRECISION_N: u8 = 9;
-    pub const PRECISION: u128 = 1000000000;
-    pub const SQUARED_PRECISION: u128 = PRECISION * PRECISION;
-
-    pub const MAX_FEE: u64 = 100000000; // 10%
-    pub const BASIS_POINT_MAX: u16 = 10000;
-    pub const MAX_PROTOCOL_SHARE: u16 = 2500; // 25%
-
-    pub const DAY: u64 = 86400;
-
-    pub fn scale() -> U256 {
-        U256::from(1) << SCALE_OFFSET
-    }
-}
-
 mod bin {
-    use super::{constants, fee, price, u128x128, uint_safe};
+    use crate::{constants, u128x128};
+
+    use super::{fee, price, uint_safe};
     use alloy_primitives::U256;
 
     pub fn get_amounts(
@@ -440,51 +423,12 @@ mod bin {
     }
 }
 
-mod price {
-    use alloy_primitives::U256;
-
-    use super::constants;
-
-    // NOTE: price is a 128.128-binary fixed-point number
-    pub fn get_price_from_storage_id(storage_id: u32, bin_step: u16) -> U256 {
-        let base = get_base(bin_step);
-        let exp = get_exponent(storage_id);
-        base.pow(U256::from(exp))
-        // u128x128::pow(base, exp)
-    }
-
-    fn get_base(bin_step: u16) -> U256 {
-        constants::scale() + U256::from(bin_step)
-            << U256::from(constants::SCALE_OFFSET) / U256::from(constants::BASIS_POINT_MAX)
-    }
-
-    fn get_exponent(storage_id: u32) -> i32 {
-        get_real_id(storage_id)
-    }
-
-    const REAL_ID_SHIFT: u32 = 1 << 23;
-
-    fn get_real_id(storage_id: u32) -> i32 {
-        assert!(storage_id < (REAL_ID_SHIFT << 1), "ErrStorageIDTooBig");
-        if storage_id >= REAL_ID_SHIFT {
-            (storage_id - REAL_ID_SHIFT) as i32
-        } else {
-            (REAL_ID_SHIFT as i64 - storage_id as i64) as i32
-        }
-    }
-
-    #[cfg(test)]
-    fn test_storafge_id() {
-        assert!(get_real_id(REAL_ID_SHIFT + 1).eq(&1));
-        assert!(get_real_id(REAL_ID_SHIFT - 1).eq(&-1));
-        assert!(get_real_id(REAL_ID_SHIFT).eq(&0));
-    }
-}
-
 mod fee {
     use alloy_primitives::U256;
 
-    use super::{constants, uint_safe};
+    use crate::constants;
+
+    use super::uint_safe;
 
     pub fn get_fee_amount_from(amount_with_fees: u64, total_fee: u64) -> u64 {
         verify_fee(total_fee);
@@ -511,28 +455,5 @@ mod fee {
 
     pub fn verify_fee(fee: u64) {
         assert!(fee <= constants::MAX_FEE, "ErrFeeTooLarge");
-    }
-}
-
-mod u128x128 {
-    use alloy_primitives::U256;
-    pub fn from_u128x128(x: U256) -> (u128, u128) {
-        (
-            (x >> U256::from(128)).to::<u128>(),
-            (x & (U256::from(1) << U256::from(128) - U256::from(1))).to::<u128>(),
-        )
-    }
-
-    pub fn to_u128x128(x: u128, decimals: u8) -> U256 {
-        (U256::from(x) << U256::from(128)) / U256::from(10).pow(U256::from(decimals))
-    }
-}
-
-mod uint_safe {
-    use alloy_primitives::U256;
-
-    pub fn safe64(x: U256) -> u64 {
-        assert!(x >> U256::from(64) == U256::ZERO, "ErrSafe64");
-        x.to()
     }
 }
