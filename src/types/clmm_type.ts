@@ -327,6 +327,15 @@ export type ClmmConfig = {
   partners_id?: SuiObjectIdType
 }
 
+export type DlmmConfig = {
+  factory: SuiObjectIdType
+
+  /**
+   * Identifier of the global configuration for the module.
+   */
+  global_config_id: SuiObjectIdType
+}
+
 /**
  * Represents an event to create a liquidity mining partner.
  */
@@ -966,22 +975,19 @@ export type OpenPositionAddLiquidityWithProtectionParams = {
   by_amount_a: boolean
 }
 
-export type AddLiquidityWithProtectionParams = AddLiquidityFixTokenParams& {
+export type AddLiquidityWithProtectionParams = AddLiquidityFixTokenParams & {
   // pool: SuiAddressType
   // position: SuiObjectIdType
   // coin_a: number | string
   // coin_b: number | string
-
   // /**
   //  * The address type of the coin A.
   //  */
   // coinAType: SuiAddressType
-
   // /**
   //  * The address type of the coin A.
   //  */
   // coinBType: SuiAddressType
-
   // max_amount_a: number
   // max_amount_b: number
   // min_amount_a: number

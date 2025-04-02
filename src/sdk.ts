@@ -8,7 +8,7 @@ import { LockModule } from './modules/lockModule'
 import { TokenModule } from './modules/tokenModule'
 import { RouterModuleV2 } from './modules/routerModuleV2'
 import { CachedContent, cacheTime24h, extractStructTagFromType, getFutureTime, patchFixSuiObjectId } from './utils'
-import { MagmaConfigs, ClmmConfig, CoinAsset, Package, SuiResource, SuiAddressType, TokenConfig } from './types'
+import { MagmaConfigs, ClmmConfig, CoinAsset, Package, SuiResource, SuiAddressType, TokenConfig, DlmmConfig } from './types'
 import { ConfigModule } from './modules'
 import { RpcModule } from './modules/rpcModule'
 import { GaugeModule } from './modules/gaugeModule'
@@ -56,6 +56,8 @@ export type SdkOptions = {
    * Package containing Cryptocurrency Liquidity Mining Module (CLMM) pool configurations.
    */
   clmm_pool: Package<ClmmConfig>
+
+  dlmm_pool: Package<DlmmConfig>
 
   distribution: Package
 

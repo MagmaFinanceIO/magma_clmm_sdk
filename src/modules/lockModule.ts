@@ -268,6 +268,7 @@ export class LockModule implements IModule {
     })
     return tx
   }
+
   async fastLocksOfUser(user: string): Promise<LocksInfo> {
     const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
     const { distribution } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
@@ -298,19 +299,16 @@ export class LockModule implements IModule {
             amount: aLockSummary.reward_distributor_claimable,
           },
           voting_power: aLockSummary.voting_power,
-          voting_rewards: new Map<string, Coin[]>()
+          voting_rewards: new Map<string, Coin[]>(),
         }
 
         locksInfo.lockInfo.push(lockInfo)
       } catch (error) {
         console.error('fastLocksOfUser error', error)
-
       }
-
     }
     return locksInfo
   }
-
 
   async locksOfUserV2(user: string): Promise<LocksInfo> {
     const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
@@ -390,7 +388,6 @@ export class LockModule implements IModule {
 
     for (const item of ownerRes.data as any[]) {
       try {
-
         const { fields } = item.data.content
 
         const aLockSummary = await this.aLockSummary(fields.id.id)
@@ -458,10 +455,7 @@ export class LockModule implements IModule {
         locksInfo.lockInfo.push(lockInfo)
       } catch (error) {
         console.error('locksOfUser error', error)
-
       }
-
-
     }
     return locksInfo
   }

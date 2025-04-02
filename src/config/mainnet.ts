@@ -25,6 +25,11 @@ const SDKConfig = {
     magma_token: '0x7161c6c6bb65f852797c8f7f5c4f8d57adaf796e1b840921f9e23fabeadfd54e::magma::MAGMA',
     minter_id: '0x4fa5766cd83b33b215b139fec27ac344040f3bbd84fcbee7b61fc671aadc51fa',
   },
+  dlmmConfig: {
+    factory: '',
+    global_config_id: '',
+  },
+  gaugeConfig: {},
 }
 
 // mainnet
@@ -42,6 +47,11 @@ export const clmmMainnet: SdkOptions = {
     package_id: '0x4a35d3dfef55ed3631b7158544c6322a23bc434fe4fca1234cb680ce0505f82d',
     published_at: '0x4a35d3dfef55ed3631b7158544c6322a23bc434fe4fca1234cb680ce0505f82d',
     config: SDKConfig.clmmConfig,
+  },
+  dlmm_pool: {
+    package_id: '',
+    published_at: '',
+    config: SDKConfig.dlmmConfig,
   },
   distribution: {
     package_id: '0xee4a1f231dc45a303389998fe26c4e39278cf68b404b32e4f0b9769129b8267b',

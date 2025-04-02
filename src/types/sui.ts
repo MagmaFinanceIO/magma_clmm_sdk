@@ -36,6 +36,7 @@ export const Voter = 'voter'
 export const RewardDistributor = 'reward_distributor'
 export const Gauge = 'gauge'
 export const Minter = 'minter'
+export const DlmmScript = 'dlmm_script'
 
 /**
  * The address for CoinInfo module.

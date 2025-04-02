@@ -7,7 +7,7 @@
 <br />
 <div align="center">
   <a >
-    <img src="./icon_color.svg" alt="Logo" width="100" height="100">
+    <img src="https://app.magmafinance.io/magma.svg" alt="Logo" width="100" height="100">
   </a>
 
   <h3 align="center">Magma-CLMM-SDK</h3>
