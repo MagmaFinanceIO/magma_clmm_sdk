@@ -52,7 +52,21 @@ export class DlmmModule implements IModule {
       throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
-    const res: EventPairParams = {}
+    const res: EventPairParams = {
+      base_factor: 0,
+      filter_period: 0,
+      decay_period: 0,
+      reduction_factor: 0,
+      variable_fee_control: 0,
+      protocol_share: 0,
+      max_volatility_accumulator: 0,
+      volatility_accumulator: 0,
+      volatility_reference: 0,
+      index_reference: 0,
+      time_of_last_update: 0,
+      oracle_index: 0,
+      active_index: 0,
+    }
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventFetchBins`) {
         res.base_factor = item.parsedJson.base_factor
@@ -80,17 +94,13 @@ export class DlmmModule implements IModule {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { dlmm_pool, integrate } = this.sdk.sdkOptions
+    const { clmm_pool, dlmm_pool, integrate } = this.sdk.sdkOptions
+    const { global_config_id } = getPackagerConfigs(clmm_pool)
     const dlmmConfig = getPackagerConfigs(dlmm_pool)
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
-    const args = [
-      tx.object(dlmmConfig.factory),
-      tx.object(dlmmConfig.global_config_id),
-      tx.pure.u16(params.bin_step),
-      tx.pure.u32(params.active_id),
-    ]
+    const args = [tx.object(dlmmConfig.factory), tx.object(global_config_id), tx.pure.u16(params.bin_step), tx.pure.u32(params.active_id)]
 
     tx.moveCall({
       target: `${integrate.published_at}::${DlmmScript}::create_pair`,
@@ -170,14 +180,14 @@ export class DlmmModule implements IModule {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { dlmm_pool, integrate } = this.sdk.sdkOptions
-    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+    const { clmm_pool, integrate } = this.sdk.sdkOptions
+    const { global_config_id } = getPackagerConfigs(clmm_pool)
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
     const args = [
       tx.object(params.pair),
-      tx.object(dlmmConfig.global_config_id),
+      tx.object(global_config_id),
       tx.object(params.coinTypeA),
       tx.object(params.coinTypeB),
       tx.pure.u64(params.amountIn),

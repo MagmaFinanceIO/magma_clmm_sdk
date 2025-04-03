@@ -329,11 +329,6 @@ export type ClmmConfig = {
 
 export type DlmmConfig = {
   factory: SuiObjectIdType
-
-  /**
-   * Identifier of the global configuration for the module.
-   */
-  global_config_id: SuiObjectIdType
 }
 
 /**
