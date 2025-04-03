@@ -1,4 +1,5 @@
 use alloy_primitives::U256;
+use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
 use crate::{
@@ -53,7 +54,10 @@ pub fn get_price_from_storage_id(storage_id: u32, bin_step: u16) -> U256 {
 }
 
 // NOTE: price is a 128.128-binary fixed-point number
-pub fn get_real_id_from_price(price: U256, bin_step: u16) -> i32 {
+//price_x10_128: is int string
+#[wasm_bindgen]
+pub fn get_real_id_from_price(price_x10_128: String, bin_step: u16) -> i32 {
+    let price = U256::from_str(&price_x10_128).unwrap();
     let base = get_base(bin_step);
     let (price_abs, price_positive) = log2(price);
     let (base_abs, base_positive) = log2(base);

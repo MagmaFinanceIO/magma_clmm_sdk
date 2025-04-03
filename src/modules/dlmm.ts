@@ -15,6 +15,8 @@ import {
   EventPairParams,
 } from 'src/types/dlmm'
 import { extractStructTagFromType } from 'src/utils'
+import Decimal from 'decimal.js'
+import { get_real_id_from_price } from '@magmaprotocol/calc_dlmm'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 
@@ -88,9 +90,18 @@ export class DlmmModule implements IModule {
     return res
   }
 
-  // TODO: 1. sort x, y
-  // 2. convert price to active_id
+  // params price: input (b/(10^b_decimal))/(a/(10^a_decimal))
+  price_to_active_id(price: string, bin_step: number, tokenADecimal: number, tokenBDecimal: number): number {
+    const priceDec = new Decimal(price)
+    const tenDec = new Decimal(10)
+    const price_x10_128 = priceDec.mul(tenDec.pow(tokenBDecimal)).div(tenDec.pow(tokenADecimal)).mul(tenDec.pow(128))
+    return get_real_id_from_price(price_x10_128.toString(), bin_step)
+  }
+
+  // NOTE: x, y should be sorted
   async createPairPayload(params: CreatePairParams): Promise<Transaction> {
+    const active_id = this.price_to_active_id(params.priceTokenBPerTokenA, params.bin_step, params.coinADecimal, params.coinBDecimal)
+
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
@@ -100,7 +111,7 @@ export class DlmmModule implements IModule {
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
-    const args = [tx.object(dlmmConfig.factory), tx.object(global_config_id), tx.pure.u16(params.bin_step), tx.pure.u32(params.active_id)]
+    const args = [tx.object(dlmmConfig.factory), tx.object(global_config_id), tx.pure.u16(params.bin_step), tx.pure.u32(active_id)]
 
     tx.moveCall({
       target: `${integrate.published_at}::${DlmmScript}::create_pair`,
