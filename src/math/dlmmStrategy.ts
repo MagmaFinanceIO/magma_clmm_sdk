@@ -1,7 +1,5 @@
-// 1. Add Liquidity 的时候
-
 import BN from 'bn.js'
-import { ClmmpoolsError, DlmmStrategyCode } from 'src/errors/errors'
+import { ClmmpoolsError, DlmmStrategyCode } from '../errors/errors'
 import { autoFillXByWeight, autoFillYByWeight, toAmountAskSide, toAmountBidSide, toAmountBothSide } from './dlmmWeightToAmounts'
 
 export enum StrategyType {

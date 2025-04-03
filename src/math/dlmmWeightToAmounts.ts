@@ -3,8 +3,9 @@ import Decimal from 'decimal.js'
 import { get_price_from_real_id } from '@magmaprotocol/calc_dlmm'
 
 export function getPriceOfBinByBinId(binId: number, binStep: number): Decimal {
+  const twoDec = new Decimal(2)
   const price = new Decimal(get_price_from_real_id(binId, binStep))
-  return price
+  return price.div(twoDec.pow(128))
 }
 
 export function autoFillYByWeight(

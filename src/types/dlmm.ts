@@ -69,19 +69,19 @@ export type GetPairLiquidityParams = {
 }
 
 export type EventPairParams = {
-  base_factor: number | string // u16, basis_point
-  filter_period: number | string // u16, 12bit
-  decay_period: number | string // u16, 12bit
-  reduction_factor: number | string // u16, 14bit
-  variable_fee_control: number | string // u32, 24bit, basis_point
-  protocol_share: number | string // u16, 14bit
-  max_volatility_accumulator: number | string // u32, 20bit, basis_point
-  volatility_accumulator: number | string // u32, 20bit, basis_point
-  volatility_reference: number | string // u32, 20bit
-  index_reference: number | string // u32, 24bit
+  base_factor: number // u16, basis_point
+  filter_period: number // u16, 12bit
+  decay_period: number // u16, 12bit
+  reduction_factor: number // u16, 14bit
+  variable_fee_control: number // u32, 24bit, basis_point
+  protocol_share: number // u16, 14bit
+  max_volatility_accumulator: number // u32, 20bit, basis_point
+  volatility_accumulator: number // u32, 20bit, basis_point
+  volatility_reference: number // u32, 20bit
+  index_reference: number // u32, 24bit
   time_of_last_update: number | string // u64
-  oracle_index: number | string // u16
-  active_index: number | string // u32, 24bit
+  oracle_index: number // u16
+  active_index: number // u32, 24bit StorageId
 }
 
 export type EventBin = {

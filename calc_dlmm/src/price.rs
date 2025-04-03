@@ -9,6 +9,7 @@ use crate::{
 };
 
 #[wasm_bindgen]
+// Return 2^128 price
 pub fn get_price_from_real_id(real_id: i32, bin_step: u16) -> String {
     let storage_id = get_storage_id_from_real_id(real_id);
     let price = get_price_from_storage_id(storage_id, bin_step);
@@ -54,10 +55,10 @@ pub fn get_price_from_storage_id(storage_id: u32, bin_step: u16) -> U256 {
 }
 
 // NOTE: price is a 128.128-binary fixed-point number
-//price_x10_128: is int string
+//price_x2^128: is int string
 #[wasm_bindgen]
-pub fn get_real_id_from_price(price_x10_128: String, bin_step: u16) -> i32 {
-    let price = U256::from_str(&price_x10_128).unwrap();
+pub fn get_real_id_from_price(price_x128: String, bin_step: u16) -> i32 {
+    let price = U256::from_str(&price_x128).unwrap();
     let base = get_base(bin_step);
     let (price_abs, price_positive) = log2(price);
     let (base_abs, base_positive) = log2(base);
@@ -85,10 +86,11 @@ fn test_get_base() {
 }
 
 #[test]
-fn test_storage_id() {
+fn test_get_real_id() {
     assert!(get_real_id(REAL_ID_SHIFT + 1) == 1i32);
     assert!(get_real_id(REAL_ID_SHIFT - 1) == i32_neg_from(1));
     assert!(get_real_id(REAL_ID_SHIFT) == 0i32);
+    assert!(get_real_id(8396395) == 7787);
 }
 
 #[test]
@@ -102,6 +104,7 @@ fn test_get_storage_id() {
     assert!(get_storage_id_from_real_id(i32::from(1)) == (1 + REAL_ID_SHIFT));
     assert!(get_storage_id_from_real_id(0i32) == REAL_ID_SHIFT);
     assert!(get_storage_id_from_real_id(i32_neg_from(1)) == (REAL_ID_SHIFT - 1));
+    assert!(get_storage_id_from_real_id(7787) == 8396395);
 }
 
 fn i32_neg_from(n: u32) -> i32 {

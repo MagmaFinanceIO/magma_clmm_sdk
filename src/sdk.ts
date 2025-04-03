@@ -12,6 +12,7 @@ import { MagmaConfigs, ClmmConfig, CoinAsset, Package, SuiResource, SuiAddressTy
 import { ConfigModule } from './modules'
 import { RpcModule } from './modules/rpcModule'
 import { GaugeModule } from './modules/gaugeModule'
+import { DlmmModule } from './modules/dlmm'
 
 /**
  * Represents options and configurations for an SDK.
@@ -120,6 +121,8 @@ export class MagmaClmmSDK {
 
   protected _gauge: GaugeModule
 
+  protected _dlmm: DlmmModule
+
   /**
    * Provide interact  with a position rewarder interface.
    */
@@ -165,6 +168,7 @@ export class MagmaClmmSDK {
     this._swap = new SwapModule(this)
     this._lock = new LockModule(this)
     this._gauge = new GaugeModule(this)
+    this._dlmm = new DlmmModule(this)
     this._pool = new PoolModule(this)
     this._position = new PositionModule(this)
     this._rewarder = new RewarderModule(this)
@@ -207,6 +211,10 @@ export class MagmaClmmSDK {
 
   get Gauge(): GaugeModule {
     return this._gauge
+  }
+
+  get Dlmm(): DlmmModule {
+    return this._dlmm
   }
 
   /**

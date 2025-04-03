@@ -1,5 +1,4 @@
 import { Transaction } from '@mysten/sui/transactions'
-import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from 'src/types'
 import {
   EventBin,
   CreatePairParams,
@@ -14,9 +13,10 @@ import {
   FetchPairParams,
   EventPairParams,
 } from 'src/types/dlmm'
-import { extractStructTagFromType } from 'src/utils'
 import Decimal from 'decimal.js'
-import { get_real_id_from_price } from '@magmaprotocol/calc_dlmm'
+import { get_real_id_from_price, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
+import { extractStructTagFromType, TransactionUtil } from '../utils'
+import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from '../types'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 
@@ -54,7 +54,7 @@ export class DlmmModule implements IModule {
       throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
-    const res: EventPairParams = {
+    let res: EventPairParams = {
       base_factor: 0,
       filter_period: 0,
       decay_period: 0,
@@ -70,20 +70,9 @@ export class DlmmModule implements IModule {
       active_index: 0,
     }
     simulateRes.events?.forEach((item: any) => {
-      if (extractStructTagFromType(item.type).name === `EventFetchBins`) {
-        res.base_factor = item.parsedJson.base_factor
-        res.filter_period = item.parsedJson.filter_period
-        res.decay_period = item.parsedJson.decay_period
-        res.reduction_factor = item.parsedJson.reduction_factor
-        res.variable_fee_control = item.parsedJson.variable_fee_control
-        res.protocol_share = item.parsedJson.protocol_share
-        res.max_volatility_accumulator = item.parsedJson.max_volatility_accumulator
-        res.volatility_accumulator = item.parsedJson.volatility_accumulator
-        res.volatility_reference = item.parsedJson.volatility_reference
-        res.index_reference = item.parsedJson.index_reference
-        res.time_of_last_update = item.parsedJson.time_of_last_update
-        res.oracle_index = item.parsedJson.oracle_index
-        res.active_index = item.parsedJson.active_index
+      console.log(extractStructTagFromType(item.type).name)
+      if (extractStructTagFromType(item.type).name === `EventPairParams`) {
+        res = item.parsedJson.params
       }
     })
 
@@ -91,16 +80,18 @@ export class DlmmModule implements IModule {
   }
 
   // params price: input (b/(10^b_decimal))/(a/(10^a_decimal))
-  price_to_active_id(price: string, bin_step: number, tokenADecimal: number, tokenBDecimal: number): number {
+  price_to_storage_id(price: string, bin_step: number, tokenADecimal: number, tokenBDecimal: number): number {
     const priceDec = new Decimal(price)
     const tenDec = new Decimal(10)
-    const price_x10_128 = priceDec.mul(tenDec.pow(tokenBDecimal)).div(tenDec.pow(tokenADecimal)).mul(tenDec.pow(128))
-    return get_real_id_from_price(price_x10_128.toString(), bin_step)
+    const twoDec = new Decimal(2)
+    const price_x128 = priceDec.mul(tenDec.pow(tokenBDecimal)).div(tenDec.pow(tokenADecimal)).mul(twoDec.pow(128))
+    const active_id = get_real_id_from_price(price_x128.toFixed(0).toString(), bin_step)
+    return get_storage_id_from_real_id(active_id)
   }
 
   // NOTE: x, y should be sorted
   async createPairPayload(params: CreatePairParams): Promise<Transaction> {
-    const active_id = this.price_to_active_id(params.priceTokenBPerTokenA, params.bin_step, params.coinADecimal, params.coinBDecimal)
+    const storage_id = this.price_to_storage_id(params.priceTokenBPerTokenA, params.bin_step, params.coinADecimal, params.coinBDecimal)
 
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
@@ -110,8 +101,7 @@ export class DlmmModule implements IModule {
     const dlmmConfig = getPackagerConfigs(dlmm_pool)
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
-
-    const args = [tx.object(dlmmConfig.factory), tx.object(global_config_id), tx.pure.u16(params.bin_step), tx.pure.u32(active_id)]
+    const args = [tx.object(dlmmConfig.factory), tx.object(global_config_id), tx.pure.u16(params.bin_step), tx.pure.u32(storage_id)]
 
     tx.moveCall({
       target: `${integrate.published_at}::${DlmmScript}::create_pair`,
@@ -127,6 +117,7 @@ export class DlmmModule implements IModule {
     return tx
   }
 
+  // Create a position by percent
   async mintPercent(params: MintPercentParams): Promise<Transaction> {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
@@ -136,11 +127,15 @@ export class DlmmModule implements IModule {
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
+    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+
     const args = [
       tx.object(params.pair),
       tx.object(dlmmConfig.factory),
-      tx.object(params.coinTypeA),
-      tx.object(params.coinTypeB),
+      primaryCoinAInputs.targetCoin,
+      primaryCoinBInputs.targetCoin,
       tx.pure.u64(params.amountATotal),
       tx.pure.u64(params.amountBTotal),
       tx.pure.vector('u32', params.storageIds),
@@ -158,7 +153,8 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async mintAmount(params: MintAmountParams): Promise<Transaction> {
+  // Create a position by amount
+  async createPositionByAmount(params: MintAmountParams): Promise<Transaction> {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
@@ -167,11 +163,15 @@ export class DlmmModule implements IModule {
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
+    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+
     const args = [
       tx.object(params.pair),
       tx.object(dlmmConfig.factory),
-      tx.object(params.coinTypeA),
-      tx.object(params.coinTypeB),
+      primaryCoinAInputs.targetCoin,
+      primaryCoinBInputs.targetCoin,
       tx.pure.vector('u32', params.storageIds),
       tx.pure.vector('u64', params.amountsA),
       tx.pure.vector('u64', params.amountsB),
