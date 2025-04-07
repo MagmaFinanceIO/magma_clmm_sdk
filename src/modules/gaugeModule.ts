@@ -265,6 +265,23 @@ export class GaugeModule implements IModule {
     return tx
   }
 
+  async getAllRewardByPositions(paramsList: GetRewardByPosition[]): Promise<Transaction> {
+    const tx = new Transaction()
+    const { integrate } = this.sdk.sdkOptions
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    paramsList.forEach(params => {
+      const typeArguments = [params.coinTypeA, params.coinTypeB, magma_token]
+      const args = [tx.object(params.gaugeId), tx.object(params.poolId), tx.object(params.positionId), tx.object(CLOCK_ADDRESS)]
+      tx.moveCall({
+        target: `${integrate.published_at}::${Gauge}::get_reward_by_position`,
+        arguments: args,
+        typeArguments,
+      })
+    })
+
+    return tx
+  }
+
   async getEpochRewardByPool(pool: string, incentive_tokens: string[]): Promise<Map<string, string>> {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
