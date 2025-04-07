@@ -12,13 +12,15 @@ import {
   GetPairLiquidityParams,
   FetchPairParams,
   EventPairParams,
+  DlmmPoolInfo,
 } from 'src/types/dlmm'
 import Decimal from 'decimal.js'
 import { get_real_id_from_price, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
-import { extractStructTagFromType, TransactionUtil } from '../utils'
+import { extractStructTagFromType, getObjectFields, TransactionUtil } from '../utils'
 import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from '../types'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
+import { ClmmpoolsError, TypesErrorCode } from '../errors/errors'
 
 export class DlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -29,6 +31,30 @@ export class DlmmModule implements IModule {
 
   get sdk() {
     return this._sdk
+  }
+
+  async getPoolInfo(pools: string[]): Promise<DlmmPoolInfo[]> {
+    const objects = await this._sdk.fullClient.batchGetObjects(pools, { showContent: true })
+
+    const poolList: DlmmPoolInfo[] = []
+    objects.forEach((obj) => {
+      if (obj.error != null || obj.data?.content?.dataType !== 'moveObject') {
+        throw new ClmmpoolsError(`Invalid objects. error: ${obj.error}`, TypesErrorCode.InvalidType)
+      }
+
+      const fields = getObjectFields(obj)
+      poolList.push({
+        pool_id: fields.id.id,
+        bin_step: fields.bin_step,
+        coin_a: fields.x.fields.name,
+        coin_b: fields.y.fields.name,
+        base_factor: fields.params.fields.base_factor,
+        base_fee: (fields.params.fields.base_factor / 10000) * (fields.bin_step / 10000),
+        active_index: fields.params.fields.active_index,
+      })
+    })
+
+    return poolList
   }
 
   // eg: fetch pool active_index

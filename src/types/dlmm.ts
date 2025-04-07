@@ -123,3 +123,13 @@ export type EventPairLiquidity = {
   bin_x: number[] | string[] // x_amount, vector<u64>
   bin_y: number[] | string[] // y_amount, vector<u64>
 }
+
+export type DlmmPoolInfo = {
+  pool_id: string
+  bin_step: number
+  coin_a: string
+  coin_b: string
+  base_factor: number
+  base_fee: number
+  active_index: number
+}

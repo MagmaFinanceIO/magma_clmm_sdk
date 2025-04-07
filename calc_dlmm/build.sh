@@ -36,10 +36,10 @@ install_wasm_pack() {
 install_wasm_pack
 
 if [ -z ${CALC_DEBUG} ]; then
-    wasm-pack build --target nodejs --scope magmaprotocol "$SCRIPT_DIR"
+    wasm-pack build --target web --scope magmaprotocol "$SCRIPT_DIR"
 else
     echo "Fee debugging enabled"
-    wasm-pack build --debug --target nodejs --scope magmaprotocol "$SCRIPT_DIR" -- --features debug
+    wasm-pack build --debug --target web --scope magmaprotocol "$SCRIPT_DIR" -- --features debug
 fi
 # append a newline to pkg/package.json if it isn't there
 if [ "$(tail -c1 "$SCRIPT_DIR/pkg/package.json"; echo x)" != $'\nx' ]; then
