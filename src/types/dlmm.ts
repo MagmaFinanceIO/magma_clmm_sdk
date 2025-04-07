@@ -176,3 +176,35 @@ export type DlmmCollectFeeParams = {
   coin_b: string
   position_id: string
 }
+// public entry fun earned_rewards2<X, Y, R1, R2>(pair: &DlmmPair<X, Y>, position_id: ID, clock: &Clock) {
+export type DlmmRewardsParams = {
+  pool_id: string
+  position_id: string
+  coin_a: string
+  coin_b: string
+  rewards_token: string[]
+}
+
+export type DlmmEventEarnedFees = {
+  position_id: string
+  x: string
+  y: string
+  fee_x: number
+  fee_y: number
+}
+
+export type DlmmEventEarnedRewards = {
+  position_id: string
+  reward: string[]
+  amount: number[]
+}
+
+export type GetPairRewarderParams = {
+  pool_id: string
+  coin_a: string
+  coin_b: string
+}
+export type DlmmEventPairRewardTypes = {
+  pair_id: string
+  tokens: string[]
+}

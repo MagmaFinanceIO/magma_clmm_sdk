@@ -18,6 +18,11 @@ import {
   DlmmShrinkPosition,
   DlmmCollectRewardParams,
   DlmmCollectFeeParams,
+  DlmmEventEarnedFees,
+  DlmmRewardsParams,
+  DlmmEventEarnedRewards,
+  GetPairRewarderParams,
+  DlmmEventPairRewardTypes,
 } from 'src/types/dlmm'
 import Decimal from 'decimal.js'
 import { get_real_id_from_price, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
@@ -546,6 +551,132 @@ export class DlmmModule implements IModule {
         out.bin_ids = item.bin_ids
         out.bin_x = item.bin_x
         out.bin_y = item.bin_y
+      }
+    })
+    return out
+  }
+
+  async getEarnedFees(params: DlmmCollectFeeParams): Promise<DlmmEventEarnedFees> {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+
+    const typeArguments = [params.coin_a, params.coin_b]
+    const args = [tx.object(params.pool_id), tx.object(params.position_id)]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${DlmmScript}::earned_fees`,
+      arguments: args,
+      typeArguments,
+    })
+
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    const out: DlmmEventEarnedFees = {
+      position_id: '',
+      x: '',
+      y: '',
+      fee_x: 0,
+      fee_y: 0,
+    }
+    if (simulateRes.error != null) {
+      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `EventPositionLiquidity`) {
+        out.position_id = item.parsedJson.position_id
+        out.x = item.parsedJson.x
+        out.y = item.parsedJson.y
+        out.fee_x = item.parsedJson.fee_x
+        out.fee_y = item.parsedJson.fee_y
+      }
+    })
+    return out
+  }
+
+  async getEarnedRewards(params: DlmmRewardsParams): Promise<DlmmEventEarnedRewards> {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+
+    const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
+
+    const args = [tx.object(params.pool_id), tx.object(params.position_id)]
+    let target = `${integrate.published_at}::${DlmmScript}::earned_rewards`
+    if (params.rewards_token.length > 1) {
+      target = `${integrate.published_at}::${DlmmScript}::earned_rewards${params.rewards_token.length}`
+    }
+
+    tx.moveCall({
+      target,
+      arguments: args,
+      typeArguments,
+    })
+
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    const out: DlmmEventEarnedRewards = {
+      position_id: '',
+      reward: [],
+      amount: [],
+    }
+
+    if (simulateRes.error != null) {
+      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `DlmmEventEarnedRewards`) {
+        out.position_id = item.parsedJson.position_id
+        out.reward = [item.parsedJson.reward]
+        out.amount = [item.parsedJson.amount]
+      } else if (extractStructTagFromType(item.type).name === `DlmmEventEarnedRewards2`) {
+        out.position_id = item.parsedJson.position_id
+        out.reward = [item.parsedJson.reward1, item.parsedJson.reward2]
+        out.amount = [item.parsedJson.amount1, item.parsedJson.amount2]
+      } else if (extractStructTagFromType(item.type).name === `EventEarnedRewards3`) {
+        out.position_id = item.parsedJson.position_id
+        out.reward = [item.parsedJson.reward1, item.parsedJson.reward2, item.parsedJson.reward3]
+        out.amount = [item.parsedJson.amount1, item.parsedJson.amount2, item.parsedJson.amount3]
+      }
+    })
+    return out
+  }
+
+  async getPairRewarders(params: GetPairRewarderParams): Promise<DlmmEventPairRewardTypes> {
+    const tx = new Transaction()
+    const { integrate, simulationAccount } = this.sdk.sdkOptions
+
+    const typeArguments = [params.coin_a, params.coin_b]
+    const args = [tx.object(params.pool_id)]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${DlmmScript}::get_pair_rewarders`,
+      arguments: args,
+      typeArguments,
+    })
+
+    const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: simulationAccount.address,
+    })
+
+    const out: DlmmEventPairRewardTypes = {
+      pair_id: '',
+      tokens: [],
+    }
+    if (simulateRes.error != null) {
+      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+    }
+    simulateRes.events?.forEach((item: any) => {
+      if (extractStructTagFromType(item.type).name === `EventPairRewardTypes`) {
+        out.pair_id = item.parsedJson.pair_id
+        item.parsedJson.tokens.contents.forEach((token: any) => {
+          out.tokens.push(token.name)
+        })
       }
     })
     return out
