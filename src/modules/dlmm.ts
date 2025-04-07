@@ -13,6 +13,11 @@ import {
   FetchPairParams,
   EventPairParams,
   DlmmPoolInfo,
+  DlmmAddLiquidityParams,
+  DlmmBurnPositionParams,
+  DlmmShrinkPosition,
+  DlmmCollectRewardParams,
+  DlmmCollectFeeParams,
 } from 'src/types/dlmm'
 import Decimal from 'decimal.js'
 import { get_real_id_from_price, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
@@ -207,6 +212,185 @@ export class DlmmModule implements IModule {
 
     tx.moveCall({
       target: `${integrate.published_at}::${DlmmScript}::mint_amounts`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  async addLiquidity(params: DlmmAddLiquidityParams): Promise<Transaction> {
+    if (params.rewards_token.length === 0) {
+      return this._raisePositionByAmounts(params)
+    }
+    return this._raisePositionByAmountsReward(params)
+  }
+
+  private async _raisePositionByAmounts(params: DlmmAddLiquidityParams): Promise<Transaction> {
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+
+    const { dlmm_pool, integrate } = this.sdk.sdkOptions
+    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+
+    const typeArguments = [params.coin_a, params.coin_b]
+
+    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+
+    const amountATotal = params.amounts_a.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
+    const amountBTotal = params.amounts_b.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
+
+    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountATotal), params.coin_a, false, true)
+    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountBTotal), params.coin_b, false, true)
+
+    const args = [
+      tx.object(params.pool_id),
+      tx.object(dlmmConfig.factory),
+      tx.object(params.position_id),
+      primaryCoinAInputs.targetCoin,
+      primaryCoinBInputs.targetCoin,
+      tx.pure.vector('u64', params.amounts_a),
+      tx.pure.vector('u64', params.amounts_b),
+      tx.pure.address(params.receiver),
+      tx.object(CLOCK_ADDRESS),
+    ]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${DlmmScript}::raise_position_by_amounts`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  private async _raisePositionByAmountsReward(params: DlmmAddLiquidityParams): Promise<Transaction> {
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+
+    const { dlmm_pool, integrate, clmm_pool } = this.sdk.sdkOptions
+    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+    const clmmConfigs = getPackagerConfigs(clmm_pool)
+
+    const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
+
+    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+
+    const amountATotal = params.amounts_a.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
+    const amountBTotal = params.amounts_b.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
+
+    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountATotal), params.coin_a, false, true)
+    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountBTotal), params.coin_b, false, true)
+
+    const args = [
+      tx.object(params.pool_id),
+      tx.object(dlmmConfig.factory),
+      tx.object(clmmConfigs.global_vault_id),
+      tx.object(params.position_id),
+      primaryCoinAInputs.targetCoin,
+      primaryCoinBInputs.targetCoin,
+      tx.pure.vector('u64', params.amounts_a),
+      tx.pure.vector('u64', params.amounts_b),
+      tx.pure.address(params.receiver),
+      tx.object(CLOCK_ADDRESS),
+    ]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${DlmmScript}::raise_position_by_amounts_reward${params.rewards_token.length}`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  async burnPosition(params: DlmmBurnPositionParams): Promise<Transaction> {
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+
+    const { integrate, clmm_pool } = this.sdk.sdkOptions
+    const clmmConfigs = getPackagerConfigs(clmm_pool)
+    const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
+    let args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
+    let target = `${integrate.published_at}::${DlmmScript}::burn_position`
+
+    if (params.rewards_token.length > 0) {
+      args = [tx.object(params.pool_id), tx.object(clmmConfigs.global_vault_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
+      target = `${integrate.published_at}::${DlmmScript}::burn_position_reward${params.rewards_token.length}`
+    }
+
+    tx.moveCall({
+      target,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  async shrinkPosition(params: DlmmShrinkPosition): Promise<Transaction> {
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+
+    const { integrate, clmm_pool } = this.sdk.sdkOptions
+    const clmmConfigs = getPackagerConfigs(clmm_pool)
+    const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
+    let args = [tx.object(params.pool_id), tx.object(params.position_id), tx.pure.u64(params.delta_percentage), tx.object(CLOCK_ADDRESS)]
+    let target = `${integrate.published_at}::${DlmmScript}::shrink_position`
+
+    if (params.rewards_token.length > 0) {
+      args = [
+        tx.object(params.pool_id),
+        tx.object(clmmConfigs.global_vault_id),
+        tx.object(params.position_id),
+        tx.pure.u64(params.delta_percentage),
+        tx.object(CLOCK_ADDRESS),
+      ]
+      target = `${integrate.published_at}::${DlmmScript}::shrink_position_reward${params.rewards_token.length}`
+    }
+
+    tx.moveCall({
+      target,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  async collectReward(params: DlmmCollectRewardParams): Promise<Transaction> {
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+
+    const { integrate, clmm_pool } = this.sdk.sdkOptions
+    const clmmConfigs = getPackagerConfigs(clmm_pool)
+    const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
+    const args = [
+      tx.object(params.pool_id),
+      tx.object(clmmConfigs.global_vault_id),
+      tx.object(params.position_id),
+      tx.object(CLOCK_ADDRESS),
+    ]
+    let target = `${integrate.published_at}::${DlmmScript}::collect_reward`
+
+    if (params.rewards_token.length > 1) {
+      target = `${integrate.published_at}::${DlmmScript}::collect_reward${params.rewards_token.length}`
+    }
+
+    tx.moveCall({
+      target,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  async collectFees(params: DlmmCollectFeeParams): Promise<Transaction> {
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+
+    const { integrate } = this.sdk.sdkOptions
+    const typeArguments = [params.coin_a, params.coin_b]
+    const args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
+    const target = `${integrate.published_at}::${DlmmScript}::collect_fees`
+
+    tx.moveCall({
+      target,
       typeArguments,
       arguments: args,
     })

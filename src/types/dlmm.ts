@@ -133,3 +133,46 @@ export type DlmmPoolInfo = {
   base_fee: number
   active_index: number
 }
+
+export type DlmmAddLiquidityParams = {
+  pool_id: string
+  coin_a: string
+  coin_b: string
+  position_id: string
+  amounts_a: number[] // vector<u64>
+  amounts_b: number[] // vector<u64>
+  receiver: string
+  rewards_token: string[]
+}
+
+export type DlmmBurnPositionParams = {
+  pool_id: string
+  position_id: string
+  coin_a: string
+  coin_b: string
+  rewards_token: string[]
+}
+
+export type DlmmShrinkPosition = {
+  pool_id: string
+  position_id: string
+  coin_a: string
+  coin_b: string
+  delta_percentage: number
+  rewards_token: string[]
+}
+
+export type DlmmCollectRewardParams = {
+  pool_id: string
+  coin_a: string
+  coin_b: string
+  position_id: string
+  rewards_token: string[]
+}
+
+export type DlmmCollectFeeParams = {
+  pool_id: string
+  coin_a: string
+  coin_b: string
+  position_id: string
+}
