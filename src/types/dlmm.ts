@@ -204,6 +204,7 @@ export type GetPairRewarderParams = {
   coin_a: string
   coin_b: string
 }
+
 export type DlmmEventPairRewardTypes = {
   pair_id: string
   tokens: string[]
