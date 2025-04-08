@@ -6,6 +6,7 @@ export type FetchPairParams = {
 
 export type CreatePairParams = {
   bin_step: number
+  base_fee: number
   coinTypeA: string
   coinTypeB: string
   coinADecimal: number

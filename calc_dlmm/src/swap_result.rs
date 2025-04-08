@@ -127,7 +127,7 @@ pub fn get_swap_in(
         };
 
         if bin_reserve > 0 {
-            let price_q128 = price::get_price_from_storage_id(id, pair.bin_step);
+            let price_q128 = price::get_price_x128_from_storage_id(id, pair.bin_step);
             let amount_out_of_bin = if bin_reserve > amount_out_left {
                 amount_out_left
             } else {
@@ -335,7 +335,7 @@ mod bin {
         active_id: u32,
         amount_in_left: u64,
     ) -> (u64, u64, u64, u64, u64, u64) {
-        let bin_price_q128 = price::get_price_from_storage_id(active_id, bin_step);
+        let bin_price_q128 = price::get_price_x128_from_storage_id(active_id, bin_step);
 
         let bin_reserve_out = if swap_for_y { reserve_y } else { reserve_x };
         let max_amount_in = if swap_for_y {

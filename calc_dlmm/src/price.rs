@@ -10,9 +10,9 @@ use crate::{
 
 #[wasm_bindgen]
 // Return 2^128 price
-pub fn get_price_from_real_id(real_id: i32, bin_step: u16) -> String {
+pub fn get_price_x128_from_real_id(real_id: i32, bin_step: u16) -> String {
     let storage_id = get_storage_id_from_real_id(real_id);
-    let price = get_price_from_storage_id(storage_id, bin_step);
+    let price = get_price_x128_from_storage_id(storage_id, bin_step);
     price.to_string()
 }
 
@@ -48,7 +48,7 @@ fn get_exponent(storage_id: u32) -> i32 {
 }
 
 // NOTE: price is a 128.128-binary fixed-point number
-pub fn get_price_from_storage_id(storage_id: u32, bin_step: u16) -> U256 {
+pub fn get_price_x128_from_storage_id(storage_id: u32, bin_step: u16) -> U256 {
     let base = get_base(bin_step);
     let exp = get_exponent(storage_id);
     pow(base, exp)
@@ -57,7 +57,7 @@ pub fn get_price_from_storage_id(storage_id: u32, bin_step: u16) -> U256 {
 // NOTE: price is a 128.128-binary fixed-point number
 //price_x2^128: is int string
 #[wasm_bindgen]
-pub fn get_real_id_from_price(price_x128: String, bin_step: u16) -> i32 {
+pub fn get_real_id_from_price_x128(price_x128: String, bin_step: u16) -> i32 {
     let price = U256::from_str(&price_x128).unwrap();
     let base = get_base(bin_step);
     let (price_abs, price_positive) = log2(price);
