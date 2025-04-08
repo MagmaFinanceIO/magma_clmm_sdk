@@ -1,4 +1,4 @@
-import BN from "bn.js"
+import BN from 'bn.js'
 
 export type FetchPairParams = {
   pair: string
@@ -215,7 +215,19 @@ export type DlmmEventPairRewardTypes = {
 }
 
 export type BinDisplay = {
-  binId: number;
-  amountX: BN;
-  amountY: BN;
+  binId: number
+  amountX: BN
+  amountY: BN
+}
+
+export type DlmmCreatePairAddLiquidityParams = {
+  baseFee: number // u64,
+  binStep: number // u16,
+  coinTypeA: string
+  coinTypeB: string
+  activeId: number // u32,
+  storageIds: number[]
+  amountsX: number[]
+  amountsY: number[]
+  to: string
 }
