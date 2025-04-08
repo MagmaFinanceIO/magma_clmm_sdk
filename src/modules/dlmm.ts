@@ -671,13 +671,13 @@ export class DlmmModule implements IModule {
 
   private async _parsePairRewarders(tx: Transaction): Promise<Map<string, DlmmEventPairRewardTypes[]>> {
     const { simulationAccount } = this.sdk.sdkOptions
+
     const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
       transactionBlock: tx,
       sender: simulationAccount.address,
     })
 
     const out = new Map<string, DlmmEventPairRewardTypes[]>()
-
     if (simulateRes.error != null) {
       throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
     }
