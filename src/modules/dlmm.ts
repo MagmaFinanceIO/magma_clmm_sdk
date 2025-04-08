@@ -1,4 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions'
+import { get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
+import Decimal from 'decimal.js'
 import {
   EventBin,
   CreatePairParams,
@@ -23,9 +25,8 @@ import {
   DlmmEventEarnedRewards,
   GetPairRewarderParams,
   DlmmEventPairRewardTypes,
-} from 'src/types/dlmm'
-import Decimal from 'decimal.js'
-import { get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
+  DlmmCreatePairAddLiquidityParams,
+} from '../types/dlmm'
 import { extractStructTagFromType, getObjectFields, TransactionUtil } from '../utils'
 import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from '../types'
 import { MagmaClmmSDK } from '../sdk'
@@ -393,6 +394,45 @@ export class DlmmModule implements IModule {
     const typeArguments = [params.coin_a, params.coin_b]
     const args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
     const target = `${integrate.published_at}::${DlmmScript}::collect_fees`
+
+    tx.moveCall({
+      target,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  async createPairAddLiquidity(params: DlmmCreatePairAddLiquidityParams): Promise<Transaction> {
+    const tx = new Transaction()
+    tx.setSender(this.sdk.senderAddress)
+
+    const { dlmm_pool, integrate } = this.sdk.sdkOptions
+    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+    const typeArguments = [params.coinTypeA, params.coinTypeB]
+
+    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+
+    const amountATotal = params.amountsX.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
+    const amountBTotal = params.amountsY.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
+
+    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountATotal), params.coinTypeA, false, true)
+    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountBTotal), params.coinTypeB, false, true)
+
+    const args = [
+      tx.object(dlmmConfig.factory),
+      tx.pure.u64(params.baseFee),
+      tx.pure.u16(params.binStep),
+      tx.pure.u32(params.activeId),
+      primaryCoinAInputs.targetCoin,
+      primaryCoinBInputs.targetCoin,
+      tx.pure.vector('u32', params.storageIds),
+      tx.pure.vector('u64', params.amountsX),
+      tx.pure.vector('u64', params.amountsY),
+      tx.pure.address(params.to),
+      tx.object(CLOCK_ADDRESS),
+    ]
+    const target = `${integrate.published_at}::${DlmmScript}::create_pair_add_liquidity`
 
     tx.moveCall({
       target,
