@@ -5,7 +5,7 @@ import {
   FetchBinsParams,
   MintAmountParams,
   MintPercentParams,
-  SwapParams,
+  DLMMSwapParams,
   EventPositionLiquidity,
   GetPositionLiquidityParams,
   EventPairLiquidity,
@@ -25,7 +25,7 @@ import {
   DlmmEventPairRewardTypes,
 } from 'src/types/dlmm'
 import Decimal from 'decimal.js'
-import { get_real_id_from_price, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
+import { get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
 import { extractStructTagFromType, getObjectFields, TransactionUtil } from '../utils'
 import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from '../types'
 import { MagmaClmmSDK } from '../sdk'
@@ -121,7 +121,7 @@ export class DlmmModule implements IModule {
     const tenDec = new Decimal(10)
     const twoDec = new Decimal(2)
     const price_x128 = priceDec.mul(tenDec.pow(tokenBDecimal)).div(tenDec.pow(tokenADecimal)).mul(twoDec.pow(128))
-    const active_id = get_real_id_from_price(price_x128.toFixed(0).toString(), bin_step)
+    const active_id = get_real_id_from_price_x128(price_x128.toFixed(0).toString(), bin_step)
     return get_storage_id_from_real_id(active_id)
   }
 
@@ -402,7 +402,7 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async swap(params: SwapParams): Promise<Transaction> {
+  async swap(params: DLMMSwapParams): Promise<Transaction> {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 

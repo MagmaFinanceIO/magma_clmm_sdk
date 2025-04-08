@@ -1,6 +1,7 @@
 import BN from 'bn.js'
 import { ClmmpoolsError, DlmmStrategyCode } from '../errors/errors'
 import { autoFillXByWeight, autoFillYByWeight, toAmountAskSide, toAmountBidSide, toAmountBothSide } from './dlmmWeightToAmounts'
+import { BinDisplay } from 'src/types'
 
 export enum StrategyType {
   Spot,
@@ -236,11 +237,7 @@ export function toAmountsBothSideByStrategy(
   amountXInActiveBin: BN,
   amountYInActiveBin: BN,
   strategyType: StrategyType
-): {
-  binId: number
-  amountX: BN
-  amountY: BN
-}[] {
+): BinDisplay[] {
   const isSingleSideX = amountY.isZero()
   switch (strategyType) {
     case StrategyType.Spot: {

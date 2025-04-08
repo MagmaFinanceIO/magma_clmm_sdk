@@ -1,3 +1,5 @@
+import BN from "bn.js"
+
 export type FetchPairParams = {
   pair: string
   coinTypeA: string
@@ -38,7 +40,7 @@ export type MintAmountParams = {
   to: string
 }
 
-export type SwapParams = {
+export type DLMMSwapParams = {
   pair: string
   coinTypeA: string
   coinTypeB: string
@@ -210,4 +212,10 @@ export type GetPairRewarderParams = {
 export type DlmmEventPairRewardTypes = {
   pair_id: string
   tokens: string[]
+}
+
+export type BinDisplay = {
+  binId: number;
+  amountX: BN;
+  amountY: BN;
 }
