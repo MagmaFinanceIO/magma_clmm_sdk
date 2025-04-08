@@ -137,19 +137,19 @@ export class DlmmModule implements IModule {
     const dlmmConfig = getPackagerConfigs(dlmm_pool)
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
-    const args = [tx.object(dlmmConfig.factory), tx.object(global_config_id), tx.pure.u16(params.bin_step), tx.pure.u32(storage_id)]
+    const args = [
+      tx.object(dlmmConfig.factory),
+      tx.object(global_config_id),
+      tx.pure.u64(params.base_fee),
+      tx.pure.u16(params.bin_step),
+      tx.pure.u32(storage_id),
+    ]
 
     tx.moveCall({
       target: `${integrate.published_at}::${DlmmScript}::create_pair`,
       typeArguments,
       arguments: args,
     })
-    return tx
-  }
-
-  async createAddLiquidityPayload(): Promise<Transaction> {
-    const tx = new Transaction()
-
     return tx
   }
 
