@@ -236,10 +236,9 @@ impl DlmmPairParameter {
 
     fn get_base_fee(&self, bin_step: u16) -> u64 {
         // Base factor is in basis points: 10000
-        // binStep is in basis points: 10000
-        // so we multiply by 10
+        // binStep is in basis points: 100000
         // 1e9
-        (self.base_factor as u64) * (bin_step as u64) * 10
+        (self.base_factor as u64) * (bin_step as u64)
     }
 
     fn get_variable_fee(&self, bin_step: u16) -> u64 {

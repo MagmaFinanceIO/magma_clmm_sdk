@@ -646,9 +646,17 @@ export class DlmmModule implements IModule {
     return out
   }
 
-  async getPairRewarders(params: GetPairRewarderParams): Promise<DlmmEventPairRewardTypes> {
-    const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
+  async getPairRewarders(params: GetPairRewarderParams[]): Promise<Map<string, DlmmEventPairRewardTypes[]>> {
+    let tx = new Transaction()
+    for (const param of params) {
+      tx = await this._getPairRewarders(param, tx)
+    }
+    return this._parsePairRewarders(tx)
+  }
+
+  private async _getPairRewarders(params: GetPairRewarderParams, tx?: Transaction): Promise<Transaction> {
+    tx = tx || new Transaction()
+    const { integrate } = this.sdk.sdkOptions
 
     const typeArguments = [params.coin_a, params.coin_b]
     const args = [tx.object(params.pool_id)]
@@ -658,24 +666,31 @@ export class DlmmModule implements IModule {
       arguments: args,
       typeArguments,
     })
+    return tx
+  }
+
+  private async _parsePairRewarders(tx: Transaction): Promise<Map<string, DlmmEventPairRewardTypes[]>> {
+    const { simulationAccount } = this.sdk.sdkOptions
 
     const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
       transactionBlock: tx,
       sender: simulationAccount.address,
     })
 
-    const out: DlmmEventPairRewardTypes = {
-      pair_id: '',
-      tokens: [],
-    }
+    const out = new Map<string, DlmmEventPairRewardTypes[]>()
     if (simulateRes.error != null) {
       throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
     }
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventPairRewardTypes`) {
-        out.pair_id = item.parsedJson.pair_id
+        const pairRewards: DlmmEventPairRewardTypes = {
+          pair_id: '',
+          tokens: [],
+        }
+
+        pairRewards.pair_id = item.parsedJson.pair_id
         item.parsedJson.tokens.contents.forEach((token: any) => {
-          out.tokens.push(token.name)
+          pairRewards.tokens.push(token.name)
         })
       }
     })
