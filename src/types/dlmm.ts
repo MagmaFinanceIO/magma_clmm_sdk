@@ -57,9 +57,9 @@ export type FetchBinsParams = {
 
 export type GetPositionLiquidityParams = {
   pair: string
+  positionId: string
   coinTypeA: string
   coinTypeB: string
-  positionId: string
 }
 
 export type GetPairLiquidityParams = {

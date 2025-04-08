@@ -453,11 +453,11 @@ export class DlmmModule implements IModule {
       throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
-    const res: EventBin[] = []
+    let res: EventBin[] = []
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventFetchBins`) {
-        // res.set(item.parsedJson.token, item.parsedJson.amount)
-        // TODO: ......
+        const { bins } = item.parsedJson
+        res = bins
       }
     })
 
@@ -502,7 +502,7 @@ export class DlmmModule implements IModule {
         out.liquidity = item.parsedJson.liquidity
         out.x_equivalent = item.parsedJson.x_equivalent
         out.y_equivalent = item.parsedJson.y_equivalent
-        out.bin_ids = item.parsedJson.bin_id
+        out.bin_ids = item.parsedJson.bin_ids
         out.bin_x_eq = item.parsedJson.bin_x_eq
         out.bin_y_eq = item.parsedJson.bin_y_eq
         out.bin_liquidity = item.parsedJson.bin_liquidity
