@@ -1,4 +1,5 @@
 import BN from 'bn.js'
+import { NFT, SuiAddressType, SuiObjectIdType } from './sui'
 
 export type FetchPairParams = {
   pair: string
@@ -230,4 +231,19 @@ export type DlmmCreatePairAddLiquidityParams = {
   amountsX: number[]
   amountsY: number[]
   to: string
+}
+
+export type DlmmPosition = {
+  pos_object_id: SuiObjectIdType
+  owner: SuiObjectIdType
+  pool: SuiObjectIdType
+  type: SuiAddressType
+  bin_ids: number[]
+}
+
+export type DlmmPositionInfo = {
+  position: DlmmPosition
+  liquidity: EventPositionLiquidity
+  rewards: DlmmEventEarnedRewards
+  fees: DlmmEventEarnedFees
 }

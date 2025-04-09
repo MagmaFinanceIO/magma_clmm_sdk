@@ -8,3 +8,4 @@ package.test.json
 /examples/*.js
 /.idea
 /calc_dlmm/target/
+/calc_dlmm/pkg/

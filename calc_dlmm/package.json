@@ -1,0 +1,28 @@
+{
+  "name": "@magmaprotocol/calc_dlmm",
+  "version": "0.2.2",
+  "files": [
+    "pkg-nodejs/calc_dlmm_bg.wasm",
+    "pkg-nodejs/calc_dlmm.js",
+    "pkg-nodejs/calc_dlmm.d.ts",
+    "pkg-bundler/calc_dlmm_bg.wasm",
+    "pkg-bundler/calc_dlmm.js",
+    "pkg-bundler/calc_dlmm_bg.js",
+    "pkg-bundler/calc_dlmm.d.ts"
+  ],
+  "exports": {
+    "import": {
+      "node": "./pkg-nodejs/calc_dlmm.js",
+      "default": "./pkg-bundler/calc_dlmm.js"
+    },
+    "require": {
+      "node": "./pkg-nodejs/calc_dlmm.js",
+      "default": "./pkg-bundler/calc_dlmm.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "types": "./pkg-bundler/calc_dlmm.d.ts"
+}
