@@ -1,4 +1,5 @@
 import { Transaction } from '@mysten/sui/transactions'
+import { SuiObjectResponse } from '@mysten/sui/client'
 import { get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
 import Decimal from 'decimal.js'
 import {
@@ -26,12 +27,14 @@ import {
   GetPairRewarderParams,
   DlmmEventPairRewardTypes,
   DlmmCreatePairAddLiquidityParams,
+  Position,
+  PositionRewards,
 } from '../types/dlmm'
-import { extractStructTagFromType, getObjectFields, TransactionUtil } from '../utils'
+import { extractStructTagFromType, getObjectFields, getObjectOwner, getObjectType, TransactionUtil } from '../utils'
 import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from '../types'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
-import { ClmmpoolsError, TypesErrorCode } from '../errors/errors'
+import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
 
 export class DlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -504,6 +507,116 @@ export class DlmmModule implements IModule {
     return res
   }
 
+  async getUserPositions(who: string, showDisplay = true): Promise<PositionRewards[]> {
+    const ownerRes: any = await this._sdk.fullClient.getOwnedObjectsByPage(who, {
+      options: { showType: true, showContent: true, showDisplay, showOwner: true },
+      filter: { Package: this._sdk.sdkOptions.dlmm_pool.package_id },
+    })
+
+    // const hasAssignPoolIds = assignPoolIds.length > 0
+    const positions = []
+    const pools: string[] = []
+    for (const item of ownerRes.data as any[]) {
+      const type = extractStructTagFromType(item.data.type)
+
+      if (type.full_address === this.buildPositionType()) {
+        const position = this.buildPosition(item)
+        positions.push(position)
+        if (!pools.includes(position.pool)) {
+          pools.push(position.pool)
+        }
+      }
+    }
+    const pool_coins = await this.getPoolCoins(pools)
+    const _params: GetPairRewarderParams[] = []
+    for (const [key, value] of pool_coins.entries()) {
+      _params.push({
+        pool_id: key,
+        coin_a: value[0],
+        coin_b: value[1],
+      })
+    }
+    const pool_reward_coins = await this.getPairRewarders(_params)
+
+    const out = []
+
+    // 1. Get Liquidity
+    // 2. Get rewards
+    // 3. Get fees
+    for (const item of positions) {
+      const coins = pool_coins.get(item.pool) || ['', '']
+      const positionLiquidity = await this.getPositionLiquidity({
+        pair: item.pool,
+        positionId: item.pos_object_id,
+        coinTypeA: coins[0],
+        coinTypeB: coins[1],
+      })
+      const positionRewards = await this.getEarnedRewards({
+        pool_id: item.pool,
+        position_id: item.pos_object_id,
+        coin_a: coins[0],
+        coin_b: coins[1],
+        rewards_token: pool_reward_coins.get(item.pool) || [],
+      })
+      const positionFees = await this.getEarnedFees({
+        pool_id: item.pool,
+        position_id: item.pos_object_id,
+        coin_a: coins[0],
+        coin_b: coins[1],
+      })
+      out.push({
+        position: item,
+        liquidity: positionLiquidity,
+        rewards: positionRewards,
+        fees: positionFees,
+      })
+    }
+
+    return out
+  }
+
+  private buildPosition(object: SuiObjectResponse): Position {
+    if (object.error != null || object.data?.content?.dataType !== 'moveObject') {
+      throw new ClmmpoolsError(`Dlmm Position not exists. Get Position error:${object.error}`, PositionErrorCode.InvalidPositionObject)
+    }
+    const fields = getObjectFields(object)
+
+    const ownerWarp = getObjectOwner(object) as {
+      AddressOwner: string
+    }
+
+    return {
+      pos_object_id: fields.id.id,
+      owner: ownerWarp.AddressOwner,
+      pool: fields.pair_id,
+      bin_ids: fields.bin_ids,
+      type: '',
+    }
+  }
+
+  // return [coin_a, coin_b]
+  private async getPoolCoins(pools: string[]): Promise<Map<string, string[]>> {
+    const res = await this._sdk.fullClient.multiGetObjects({ ids: pools, options: { showContent: true } })
+
+    const poolCoins = new Map<string, string[]>()
+
+    res.forEach((item) => {
+      if (item.error != null || item.data?.content?.dataType !== 'moveObject') {
+        throw new Error(`Failed to get poolCoins with err: ${item.error}`)
+      }
+
+      const type = getObjectType(item) as string
+      const poolTypeFields = extractStructTagFromType(type)
+
+      poolCoins.set(item.data.objectId, poolTypeFields.type_arguments)
+    })
+    return poolCoins
+  }
+
+  private buildPositionType(): string {
+    return `${this._sdk.sdkOptions.dlmm_pool.package_id}::dlmm_position::Position`
+  }
+
   async getPositionLiquidity(params: GetPositionLiquidityParams): Promise<EventPositionLiquidity> {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
@@ -686,7 +799,8 @@ export class DlmmModule implements IModule {
     return out
   }
 
-  async getPairRewarders(params: GetPairRewarderParams[]): Promise<Map<string, DlmmEventPairRewardTypes[]>> {
+  // return pool_id => reward_tokens
+  async getPairRewarders(params: GetPairRewarderParams[]): Promise<Map<string, string[]>> {
     let tx = new Transaction()
     for (const param of params) {
       tx = await this._getPairRewarders(param, tx)
@@ -709,7 +823,7 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  private async _parsePairRewarders(tx: Transaction): Promise<Map<string, DlmmEventPairRewardTypes[]>> {
+  private async _parsePairRewarders(tx: Transaction): Promise<Map<string, string[]>> {
     const { simulationAccount } = this.sdk.sdkOptions
 
     const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
@@ -717,7 +831,7 @@ export class DlmmModule implements IModule {
       sender: simulationAccount.address,
     })
 
-    const out = new Map<string, DlmmEventPairRewardTypes[]>()
+    const out = new Map<string, string[]>()
     if (simulateRes.error != null) {
       throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
     }
@@ -732,6 +846,8 @@ export class DlmmModule implements IModule {
         item.parsedJson.tokens.contents.forEach((token: any) => {
           pairRewards.tokens.push(token.name)
         })
+
+        out.set(pairRewards.pair_id, pairRewards.tokens)
       }
     })
     return out
