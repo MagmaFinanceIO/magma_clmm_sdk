@@ -233,7 +233,7 @@ export type DlmmCreatePairAddLiquidityParams = {
   to: string
 }
 
-export type Position = {
+export type DlmmPosition = {
   pos_object_id: SuiObjectIdType
   owner: SuiObjectIdType
   pool: SuiObjectIdType
@@ -241,8 +241,8 @@ export type Position = {
   bin_ids: number[]
 }
 
-export type PositionRewards = {
-  position: Position
+export type DlmmPositionInfo = {
+  position: DlmmPosition
   liquidity: EventPositionLiquidity
   rewards: DlmmEventEarnedRewards
   fees: DlmmEventEarnedFees

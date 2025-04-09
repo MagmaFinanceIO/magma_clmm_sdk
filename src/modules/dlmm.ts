@@ -27,8 +27,8 @@ import {
   GetPairRewarderParams,
   DlmmEventPairRewardTypes,
   DlmmCreatePairAddLiquidityParams,
-  Position,
-  PositionRewards,
+  DlmmPosition,
+  DlmmPositionInfo,
 } from '../types/dlmm'
 import { extractStructTagFromType, getObjectFields, getObjectOwner, getObjectType, TransactionUtil } from '../utils'
 import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from '../types'
@@ -507,7 +507,7 @@ export class DlmmModule implements IModule {
     return res
   }
 
-  async getUserPositions(who: string, showDisplay = true): Promise<PositionRewards[]> {
+  async getUserPositions(who: string, showDisplay = true): Promise<DlmmPositionInfo[]> {
     const ownerRes: any = await this._sdk.fullClient.getOwnedObjectsByPage(who, {
       options: { showType: true, showContent: true, showDisplay, showOwner: true },
       filter: { Package: this._sdk.sdkOptions.dlmm_pool.package_id },
@@ -575,7 +575,7 @@ export class DlmmModule implements IModule {
     return out
   }
 
-  private buildPosition(object: SuiObjectResponse): Position {
+  private buildPosition(object: SuiObjectResponse): DlmmPosition {
     if (object.error != null || object.data?.content?.dataType !== 'moveObject') {
       throw new ClmmpoolsError(`Dlmm Position not exists. Get Position error:${object.error}`, PositionErrorCode.InvalidPositionObject)
     }
