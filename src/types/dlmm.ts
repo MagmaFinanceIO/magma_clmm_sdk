@@ -111,7 +111,7 @@ export type EventPositionLiquidity = {
   liquidity: number | string // u256
   x_equivalent: number | string // u64
   y_equivalent: number | string // u64
-  bin_ids: number[] | string[] // vector<u32>
+  bin_real_ids: number[] // vector<u32>
   bin_x_eq: number[] | string[] // vector<u64>
   bin_y_eq: number[] | string[] // vector<u64>
   bin_liquidity: number[] | string[] // vector<u256>
@@ -238,7 +238,7 @@ export type DlmmPosition = {
   owner: SuiObjectIdType
   pool: SuiObjectIdType
   type: SuiAddressType
-  bin_ids: number[]
+  bin_real_ids: number[]
 }
 
 export type DlmmPositionInfo = {
@@ -246,4 +246,5 @@ export type DlmmPositionInfo = {
   liquidity: EventPositionLiquidity
   rewards: DlmmEventEarnedRewards
   fees: DlmmEventEarnedFees
+  contractPool: DlmmPoolInfo | undefined;
 }

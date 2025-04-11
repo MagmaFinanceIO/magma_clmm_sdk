@@ -1,6 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions'
 import { SuiObjectResponse } from '@mysten/sui/client'
-import { get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
+import { get_real_id, get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
 import Decimal from 'decimal.js'
 import {
   EventBin,
@@ -30,14 +30,16 @@ import {
   DlmmPosition,
   DlmmPositionInfo,
 } from '../types/dlmm'
-import { extractStructTagFromType, getObjectFields, getObjectOwner, getObjectType, TransactionUtil } from '../utils'
-import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from '../types'
+import { CachedContent, cacheTime24h, cacheTime5min, extractStructTagFromType, getFutureTime, getObjectFields, getObjectOwner, getObjectType, TransactionUtil } from '../utils'
+import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs, SuiResource } from '../types'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
+import { BinMath } from 'src/math'
 
 export class DlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
+  private readonly _cache: Record<string, CachedContent> = {}
 
   constructor(sdk: MagmaClmmSDK) {
     this._sdk = sdk
@@ -119,19 +121,9 @@ export class DlmmModule implements IModule {
     return res
   }
 
-  // params price: input (b/(10^b_decimal))/(a/(10^a_decimal))
-  price_to_storage_id(price: string, bin_step: number, tokenADecimal: number, tokenBDecimal: number): number {
-    const priceDec = new Decimal(price)
-    const tenDec = new Decimal(10)
-    const twoDec = new Decimal(2)
-    const price_x128 = priceDec.mul(tenDec.pow(tokenBDecimal)).div(tenDec.pow(tokenADecimal)).mul(twoDec.pow(128))
-    const active_id = get_real_id_from_price_x128(price_x128.toFixed(0).toString(), bin_step)
-    return get_storage_id_from_real_id(active_id)
-  }
-
   // NOTE: x, y should be sorted
   async createPairPayload(params: CreatePairParams): Promise<Transaction> {
-    const storage_id = this.price_to_storage_id(params.priceTokenBPerTokenA, params.bin_step, params.coinADecimal, params.coinBDecimal)
+    const storage_id = get_storage_id_from_real_id(BinMath.getBinIdFromPrice(params.priceTokenBPerTokenA, params.bin_step, params.coinADecimal, params.coinBDecimal))
 
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
@@ -197,7 +189,6 @@ export class DlmmModule implements IModule {
   async createPositionByAmount(params: MintAmountParams): Promise<Transaction> {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
-
     const { dlmm_pool, integrate } = this.sdk.sdkOptions
     const dlmmConfig = getPackagerConfigs(dlmm_pool)
 
@@ -362,8 +353,19 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async collectReward(params: DlmmCollectRewardParams): Promise<Transaction> {
-    const tx = new Transaction()
+  async collectFeeAndReward(params: DlmmCollectRewardParams & DlmmCollectFeeParams): Promise<Transaction> {
+    let tx = new Transaction();
+    tx = await this.collectFees(params);
+    if (params.rewards_token.length > 0) {
+      tx = await this.collectReward(params);
+
+    }
+    return tx
+  }
+
+  async collectReward(params: DlmmCollectRewardParams, transaction?: Transaction): Promise<Transaction> {
+
+    const tx = transaction || new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
     const { integrate, clmm_pool } = this.sdk.sdkOptions
@@ -389,8 +391,8 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async collectFees(params: DlmmCollectFeeParams): Promise<Transaction> {
-    const tx = new Transaction()
+  async collectFees(params: DlmmCollectFeeParams, transaction?: Transaction): Promise<Transaction> {
+    const tx = transaction || new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
     const { integrate } = this.sdk.sdkOptions
@@ -507,35 +509,123 @@ export class DlmmModule implements IModule {
     return res
   }
 
-  async getUserPositions(who: string, showDisplay = true): Promise<DlmmPositionInfo[]> {
-    const ownerRes: any = await this._sdk.fullClient.getOwnedObjectsByPage(who, {
+
+
+  /**
+ * Gets a list of positions for the given account address.
+ * @param accountAddress The account address to get positions for.
+ * @param assignPoolIds An array of pool IDs to filter the positions by.
+ * @returns array of Position objects.
+ */
+  async getUserPositionById(positionId: string, showDisplay = true): Promise<DlmmPositionInfo> {
+    let position;
+    const ownerRes: any = await this._sdk.fullClient.getObject({
+      id: positionId,
+      options: { showContent: true, showType: true, showDisplay, showOwner: true },
+    })
+
+    const type = extractStructTagFromType(ownerRes.data.type)
+    if (type.full_address === this.buildPositionType()) {
+      position = this.buildPosition(ownerRes)
+    } else {
+      throw (new ClmmpoolsError(`Dlmm Position not exists. Get Position error:${ownerRes.error}`, PositionErrorCode.InvalidPositionObject))
+    }
+    const poolMap = new Set<string>();
+    poolMap.add(position.pool)
+    const pool = (await this.getPoolInfo(Array.from(poolMap)))[0];
+    const _params: GetPairRewarderParams[] = []
+    _params.push({
+      pool_id: pool.pool_id,
+      coin_a: pool.coin_a,
+      coin_b: pool.coin_b
+    })
+
+    const pool_reward_coins = await this.getPairRewarders(_params)
+    // 1. Get Liquidity
+    // 2. Get rewards
+    // 3. Get fees
+    const positionLiquidity = await this.getPositionLiquidity({
+      pair: position.pool,
+      positionId: position.pos_object_id,
+      coinTypeA: pool?.coin_a!,
+      coinTypeB: pool?.coin_b!
+    })
+    const rewards_token = pool_reward_coins.get(position.pool) || [];
+    let positionRewards: DlmmEventEarnedRewards = { position_id: position.pos_object_id, reward: [], amount: [] };
+    if (rewards_token.length > 0) {
+      positionRewards = await this.getEarnedRewards({
+        pool_id: position.pool,
+        position_id: position.pos_object_id,
+        coin_a: pool?.coin_a!,
+        coin_b: pool?.coin_b!,
+        rewards_token: pool_reward_coins.get(position.pool) || [],
+      })
+    }
+
+    const positionFees = await this.getEarnedFees({
+      pool_id: position.pool,
+      position_id: position.pos_object_id,
+      coin_a: pool?.coin_a!,
+      coin_b: pool?.coin_b!
+    })
+
+    return {
+      position: position,
+      liquidity: positionLiquidity,
+      rewards: positionRewards,
+      fees: positionFees,
+      contractPool: pool
+    }
+  }
+
+
+  /**
+   * Gets a list of positions for the given account address.
+   * @param accountAddress The account address to get positions for.
+   * @param assignPoolIds An array of pool IDs to filter the positions by.
+   * @returns array of Position objects.
+   */
+  async getUserPositions(accountAddress: string, assignPoolIds: string[] = [], showDisplay = true): Promise<DlmmPositionInfo[]> {
+    const allPosition = []
+    const ownerRes: any = await this._sdk.fullClient.getOwnedObjectsByPage(accountAddress, {
       options: { showType: true, showContent: true, showDisplay, showOwner: true },
       filter: { Package: this._sdk.sdkOptions.dlmm_pool.package_id },
     })
 
-    // const hasAssignPoolIds = assignPoolIds.length > 0
-    const positions = []
-    const pools: string[] = []
+    const hasAssignPoolIds = assignPoolIds.length > 0
     for (const item of ownerRes.data as any[]) {
       const type = extractStructTagFromType(item.data.type)
 
       if (type.full_address === this.buildPositionType()) {
         const position = this.buildPosition(item)
-        positions.push(position)
-        if (!pools.includes(position.pool)) {
-          pools.push(position.pool)
+        const cacheKey = `${position.pos_object_id}_getPositionList`
+        this.updateCache(cacheKey, position, cacheTime24h)
+        if (hasAssignPoolIds) {
+          if (assignPoolIds.includes(position.pool)) {
+            allPosition.push(position)
+          }
+        } else {
+          allPosition.push(position)
         }
       }
     }
-    const pool_coins = await this.getPoolCoins(pools)
+
+    const poolMap = new Set<string>();
+    for (const item of allPosition) {
+      poolMap.add(item.pool)
+    }
+    const poolList = await this.getPoolInfo(Array.from(poolMap));
+    this.updateCache(`${DlmmScript}_positionList_poolList`, poolList, cacheTime24h);
     const _params: GetPairRewarderParams[] = []
-    for (const [key, value] of pool_coins.entries()) {
+
+    for (const pool of poolList) {
       _params.push({
-        pool_id: key,
-        coin_a: value[0],
-        coin_b: value[1],
+        pool_id: pool.pool_id,
+        coin_a: pool.coin_a,
+        coin_b: pool.coin_b
       })
     }
+
     const pool_reward_coins = await this.getPairRewarders(_params)
 
     const out = []
@@ -543,32 +633,38 @@ export class DlmmModule implements IModule {
     // 1. Get Liquidity
     // 2. Get rewards
     // 3. Get fees
-    for (const item of positions) {
-      const coins = pool_coins.get(item.pool) || ['', '']
+    for (const item of allPosition) {
+      const pool = poolList.find((pool) => pool.pool_id === item.pool);
       const positionLiquidity = await this.getPositionLiquidity({
         pair: item.pool,
         positionId: item.pos_object_id,
-        coinTypeA: coins[0],
-        coinTypeB: coins[1],
+        coinTypeA: pool?.coin_a!,
+        coinTypeB: pool?.coin_b!
       })
-      const positionRewards = await this.getEarnedRewards({
-        pool_id: item.pool,
-        position_id: item.pos_object_id,
-        coin_a: coins[0],
-        coin_b: coins[1],
-        rewards_token: pool_reward_coins.get(item.pool) || [],
-      })
+      const rewards_token = pool_reward_coins.get(item.pool) || [];
+      let positionRewards: DlmmEventEarnedRewards = { position_id: item.pos_object_id, reward: [], amount: [] };
+      if (rewards_token.length > 0) {
+        positionRewards = await this.getEarnedRewards({
+          pool_id: item.pool,
+          position_id: item.pos_object_id,
+          coin_a: pool?.coin_a!,
+          coin_b: pool?.coin_b!,
+          rewards_token: pool_reward_coins.get(item.pool) || [],
+        })
+      }
+
       const positionFees = await this.getEarnedFees({
         pool_id: item.pool,
         position_id: item.pos_object_id,
-        coin_a: coins[0],
-        coin_b: coins[1],
+        coin_a: pool?.coin_a!,
+        coin_b: pool?.coin_b!
       })
       out.push({
         position: item,
         liquidity: positionLiquidity,
         rewards: positionRewards,
         fees: positionFees,
+        contractPool: pool
       })
     }
 
@@ -589,7 +685,7 @@ export class DlmmModule implements IModule {
       pos_object_id: fields.id.id,
       owner: ownerWarp.AddressOwner,
       pool: fields.pair_id,
-      bin_ids: fields.bin_ids,
+      bin_real_ids: (fields.bin_ids as number[]).map(id => get_real_id(id)),
       type: '',
     }
   }
@@ -644,7 +740,7 @@ export class DlmmModule implements IModule {
       liquidity: 0,
       x_equivalent: 0,
       y_equivalent: 0,
-      bin_ids: [],
+      bin_real_ids: [],
       bin_x_eq: [],
       bin_y_eq: [],
       bin_liquidity: [],
@@ -655,7 +751,7 @@ export class DlmmModule implements IModule {
         out.liquidity = item.parsedJson.liquidity
         out.x_equivalent = item.parsedJson.x_equivalent
         out.y_equivalent = item.parsedJson.y_equivalent
-        out.bin_ids = item.parsedJson.bin_ids
+        out.bin_real_ids = (item.parsedJson.bin_ids as number[]).map(id => get_real_id(id))
         out.bin_x_eq = item.parsedJson.bin_x_eq
         out.bin_y_eq = item.parsedJson.bin_y_eq
         out.bin_liquidity = item.parsedJson.bin_liquidity
@@ -755,7 +851,7 @@ export class DlmmModule implements IModule {
 
     const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
 
-    const args = [tx.object(params.pool_id), tx.object(params.position_id)]
+    const args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS),]
     let target = `${integrate.published_at}::${DlmmScript}::earned_rewards`
     if (params.rewards_token.length > 1) {
       target = `${integrate.published_at}::${DlmmScript}::earned_rewards${params.rewards_token.length}`
@@ -779,7 +875,7 @@ export class DlmmModule implements IModule {
     }
 
     if (simulateRes.error != null) {
-      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`getEarnedRewards error code: ${simulateRes.error ?? 'unknown error'}`)
     }
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `DlmmEventEarnedRewards`) {
@@ -843,7 +939,7 @@ export class DlmmModule implements IModule {
         }
 
         pairRewards.pair_id = item.parsedJson.pair_id
-        item.parsedJson.tokens.contents.forEach((token: any) => {
+        item.parsedJson.tokens.forEach((token: any) => {
           pairRewards.tokens.push(token.name)
         })
 
@@ -851,5 +947,43 @@ export class DlmmModule implements IModule {
       }
     })
     return out
+  }
+
+
+  /**
+   * Updates the cache for the given key.
+   *
+   * @param key The key of the cache entry to update.
+   * @param data The data to store in the cache.
+   * @param time The time in minutes after which the cache entry should expire.
+   */
+  updateCache(key: string, data: SuiResource, time = cacheTime5min) {
+    let cacheData = this._cache[key]
+    if (cacheData) {
+      cacheData.overdueTime = getFutureTime(time)
+      cacheData.value = data
+    } else {
+      cacheData = new CachedContent(data, getFutureTime(time))
+    }
+    this._cache[key] = cacheData
+  }
+
+  /**
+   * Gets the cache entry for the given key.
+   *
+   * @param key The key of the cache entry to get.
+   * @param forceRefresh Whether to force a refresh of the cache entry.
+   * @returns The cache entry for the given key, or undefined if the cache entry does not exist or is expired.
+   */
+  getCache<T>(key: string, forceRefresh = false): T | undefined {
+    const cacheData = this._cache[key]
+    const isValid = cacheData?.isValid()
+    if (!forceRefresh && isValid) {
+      return cacheData.value as T
+    }
+    if (!isValid) {
+      delete this._cache[key]
+    }
+    return undefined
   }
 }
