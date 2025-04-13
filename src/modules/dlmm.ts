@@ -82,6 +82,8 @@ export class DlmmModule implements IModule {
         base_factor: fields.params.fields.base_factor,
         base_fee: (fields.params.fields.base_factor / 10000) * (fields.bin_step / 10000),
         active_index: fields.params.fields.active_index,
+        coinAmountA: fields.reserve_x,
+        coinAmountB: fields.reserve_y
       })
     })
 

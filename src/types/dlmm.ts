@@ -135,7 +135,9 @@ export type DlmmPoolInfo = {
   coin_b: string
   base_factor: number
   base_fee: number
-  active_index: number
+  active_index: number;
+  coinAmountA: string;
+  coinAmountB: string;
 }
 
 export type DlmmAddLiquidityParams = {
