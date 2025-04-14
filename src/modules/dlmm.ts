@@ -205,6 +205,13 @@ export class DlmmModule implements IModule {
       primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
     }
 
+    if (params.fixCoinA && params.fixCoinB) {
+    } else if (params.fixCoinA) {
+      params.amountBTotal = 0
+    } else if (params.fixCoinB) {
+      params.amountATotal = 0
+    }
+
     const args = [
       tx.object(params.pair),
       tx.object(dlmmConfig.factory),
