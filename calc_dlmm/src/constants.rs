@@ -1,7 +1,6 @@
 use alloy_primitives::U256;
 
 pub const SCALE_OFFSET: u8 = 128;
-pub const MAX_LIQUIDITY_PER_BIN: u128 = 0;
 
 pub const PRECISION_N: u8 = 9;
 pub const PRECISION: u128 = 1000000000;
@@ -31,4 +30,12 @@ pub fn precision() -> u128 {
 
 pub fn precision_n() -> u8 {
     PRECISION_N
+}
+
+pub fn max_liquidity_per_bin() -> U256 {
+    U256::from_str_radix(
+        "65251743116719673010965625540244653191619923014385985379600384103134737",
+        10,
+    )
+    .unwrap()
 }

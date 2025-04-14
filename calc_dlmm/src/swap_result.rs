@@ -172,13 +172,12 @@ pub fn get_swap_in(
 impl DlmmPair {
     fn get_next_non_empty_bin_internal(&self, swap_for_y: bool, id: u32) -> (u32, bool) {
         if swap_for_y {
-            self.find_first_right(id)
-        } else {
             self.find_first_left(id)
+        } else {
+            self.find_first_right(id)
         }
     }
 
-    // 找id高的
     fn find_first_left(&self, id: u32) -> (u32, bool) {
         let mut out = (1u32 << 24, false);
         for &_id in self.bins.keys() {
@@ -188,7 +187,7 @@ impl DlmmPair {
         }
         out
     }
-    // 找id低的
+
     fn find_first_right(&self, id: u32) -> (u32, bool) {
         let mut out = (0, false);
         for &_id in self.bins.keys() {
@@ -248,7 +247,7 @@ impl DlmmPairParameter {
             let prod = U256::from(self.volatility_accumulator) * U256::from(bin_step);
             ((prod * prod * U256::from(self.variable_fee_control) + U256::from(99))
                 / U256::from(100)
-                / U256::from(1000000000))
+                / U256::from(1_000_000_000))
             .to::<u64>()
         } else {
             0
@@ -378,7 +377,7 @@ mod bin {
                     reserve_x + amount_in,
                     reserve_y - amount_out,
                     bin_price_q128
-                ) <= U256::from(constants::MAX_LIQUIDITY_PER_BIN),
+                ) <= U256::from(constants::max_liquidity_per_bin()),
                 "ErrMaxLiquidityPerBinExceeded"
             );
             (amount_in, 0, 0, amount_out, fee, 0)
@@ -388,7 +387,7 @@ mod bin {
                     reserve_x - amount_out,
                     reserve_y + amount_in,
                     bin_price_q128
-                ) <= U256::from(constants::MAX_LIQUIDITY_PER_BIN),
+                ) <= U256::from(constants::max_liquidity_per_bin()),
                 "ErrMaxLiquidityPerBinExceeded"
             );
             (0, amount_in, amount_out, 0, 0, fee)
@@ -416,7 +415,7 @@ mod bin {
         if amount_y > 0 {
             let amount_y_256 = U256::from(amount_y) << constants::SCALE_OFFSET;
             liquidity = liquidity + amount_y_256;
-            assert!(liquidity > amount_y_256, "ErrLiquidityOverflow");
+            assert!(liquidity >= amount_y_256, "ErrLiquidityOverflow");
         };
         liquidity
     }

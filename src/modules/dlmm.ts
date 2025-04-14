@@ -1,7 +1,13 @@
 import { Transaction } from '@mysten/sui/transactions'
 import { SuiObjectResponse } from '@mysten/sui/client'
-import { get_real_id, get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
+import {
+  get_price_x128_from_real_id,
+  get_real_id,
+  get_real_id_from_price_x128,
+  get_storage_id_from_real_id,
+} from '@magmaprotocol/calc_dlmm'
 import Decimal from 'decimal.js'
+import { BinMath } from 'src/math'
 import {
   EventBin,
   CreatePairParams,
@@ -29,16 +35,27 @@ import {
   DlmmCreatePairAddLiquidityParams,
   DlmmPosition,
   DlmmPositionInfo,
+  MintByStrategyParams,
 } from '../types/dlmm'
-import { CachedContent, cacheTime24h, cacheTime5min, extractStructTagFromType, getFutureTime, getObjectFields, getObjectOwner, getObjectType, TransactionUtil } from '../utils'
+import {
+  CachedContent,
+  cacheTime24h,
+  cacheTime5min,
+  extractStructTagFromType,
+  getFutureTime,
+  getObjectFields,
+  getObjectOwner,
+  getObjectType,
+  TransactionUtil,
+} from '../utils'
 import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs, SuiResource } from '../types'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
-import { BinMath } from 'src/math'
 
 export class DlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
+
   private readonly _cache: Record<string, CachedContent> = {}
 
   constructor(sdk: MagmaClmmSDK) {
@@ -123,7 +140,9 @@ export class DlmmModule implements IModule {
 
   // NOTE: x, y should be sorted
   async createPairPayload(params: CreatePairParams): Promise<Transaction> {
-    const storage_id = get_storage_id_from_real_id(BinMath.getBinIdFromPrice(params.priceTokenBPerTokenA, params.bin_step, params.coinADecimal, params.coinBDecimal))
+    const storage_id = get_storage_id_from_real_id(
+      BinMath.getBinIdFromPrice(params.priceTokenBPerTokenA, params.bin_step, params.coinADecimal, params.coinBDecimal)
+    )
 
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
@@ -143,6 +162,68 @@ export class DlmmModule implements IModule {
 
     tx.moveCall({
       target: `${integrate.published_at}::${DlmmScript}::create_pair`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  async mintByStrategy(params: MintByStrategyParams): Promise<Transaction> {
+    const tx = new Transaction()
+    const slippage = new Decimal(params.slippage)
+    const lower_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
+    const upper_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
+
+    tx.setSender(this.sdk.senderAddress)
+
+    const { dlmm_pool, integrate } = this.sdk.sdkOptions
+    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+
+    const typeArguments = [params.coinTypeA, params.coinTypeB]
+
+    const price = get_price_x128_from_real_id(params.active_bin, params.bin_step)
+    const min_price = new Decimal(price).mul(lower_slippage)
+    const max_price = new Decimal(price).mul(upper_slippage)
+
+    const active_min = get_storage_id_from_real_id(get_real_id_from_price_x128(min_price.toDecimalPlaces(0).toString(), params.bin_step))
+    const active_max = get_storage_id_from_real_id(get_real_id_from_price_x128(max_price.toDecimalPlaces(0).toString(), params.bin_step))
+
+    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    let primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+    let primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+
+    let amount_min = 0
+    let amount_max = 0
+    if (params.amountATotal !== 0) {
+      amount_min = new Decimal(params.amountATotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountATotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
+    }
+    if (params.amountBTotal !== 0) {
+      amount_min = new Decimal(params.amountBTotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountBTotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
+    }
+
+    const args = [
+      tx.object(params.pair),
+      tx.object(dlmmConfig.factory),
+      primaryCoinAInputs.targetCoin,
+      primaryCoinBInputs.targetCoin,
+      tx.pure.u64(params.amountATotal),
+      tx.pure.u64(params.amountBTotal),
+      tx.pure.u8(params.strategy),
+      tx.pure.u32(params.min_bin),
+      tx.pure.u32(params.max_bin),
+      tx.pure.u32(active_min),
+      tx.pure.u32(active_max),
+      tx.pure.u64(amount_min),
+      tx.pure.u64(amount_max),
+      tx.object(CLOCK_ADDRESS),
+    ]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${DlmmScript}::mint_percent`,
       typeArguments,
       arguments: args,
     })
@@ -354,17 +435,15 @@ export class DlmmModule implements IModule {
   }
 
   async collectFeeAndReward(params: DlmmCollectRewardParams & DlmmCollectFeeParams): Promise<Transaction> {
-    let tx = new Transaction();
-    tx = await this.collectFees(params);
+    let tx = new Transaction()
+    tx = await this.collectFees(params)
     if (params.rewards_token.length > 0) {
-      tx = await this.collectReward(params);
-
+      tx = await this.collectReward(params)
     }
     return tx
   }
 
   async collectReward(params: DlmmCollectRewardParams, transaction?: Transaction): Promise<Transaction> {
-
     const tx = transaction || new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
@@ -456,11 +535,30 @@ export class DlmmModule implements IModule {
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
+    const allCoinAsset = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    const primaryCoinInputA = TransactionUtil.buildCoinForAmount(
+      tx,
+      allCoinAsset,
+      params.swapForY ? BigInt(params.amountIn) : BigInt(0),
+      params.coinTypeA,
+      false,
+      true
+    )
+
+    const primaryCoinInputB = TransactionUtil.buildCoinForAmount(
+      tx,
+      allCoinAsset,
+      params.swapForY ? BigInt(0) : BigInt(params.amountIn),
+      params.coinTypeB,
+      false,
+      true
+    )
+
     const args = [
       tx.object(params.pair),
       tx.object(global_config_id),
-      tx.object(params.coinTypeA),
-      tx.object(params.coinTypeB),
+      primaryCoinInputA.targetCoin,
+      primaryCoinInputB.targetCoin,
       tx.pure.u64(params.amountIn),
       tx.pure.u64(params.minAmountOut),
       tx.pure.bool(params.swapForY),
@@ -509,16 +607,14 @@ export class DlmmModule implements IModule {
     return res
   }
 
-
-
   /**
- * Gets a list of positions for the given account address.
- * @param accountAddress The account address to get positions for.
- * @param assignPoolIds An array of pool IDs to filter the positions by.
- * @returns array of Position objects.
- */
+   * Gets a list of positions for the given account address.
+   * @param accountAddress The account address to get positions for.
+   * @param assignPoolIds An array of pool IDs to filter the positions by.
+   * @returns array of Position objects.
+   */
   async getUserPositionById(positionId: string, showDisplay = true): Promise<DlmmPositionInfo> {
-    let position;
+    let position
     const ownerRes: any = await this._sdk.fullClient.getObject({
       id: positionId,
       options: { showContent: true, showType: true, showDisplay, showOwner: true },
@@ -528,16 +624,16 @@ export class DlmmModule implements IModule {
     if (type.full_address === this.buildPositionType()) {
       position = this.buildPosition(ownerRes)
     } else {
-      throw (new ClmmpoolsError(`Dlmm Position not exists. Get Position error:${ownerRes.error}`, PositionErrorCode.InvalidPositionObject))
+      throw new ClmmpoolsError(`Dlmm Position not exists. Get Position error:${ownerRes.error}`, PositionErrorCode.InvalidPositionObject)
     }
-    const poolMap = new Set<string>();
+    const poolMap = new Set<string>()
     poolMap.add(position.pool)
-    const pool = (await this.getPoolInfo(Array.from(poolMap)))[0];
+    const pool = (await this.getPoolInfo(Array.from(poolMap)))[0]
     const _params: GetPairRewarderParams[] = []
     _params.push({
       pool_id: pool.pool_id,
       coin_a: pool.coin_a,
-      coin_b: pool.coin_b
+      coin_b: pool.coin_b,
     })
 
     const pool_reward_coins = await this.getPairRewarders(_params)
@@ -548,10 +644,10 @@ export class DlmmModule implements IModule {
       pair: position.pool,
       positionId: position.pos_object_id,
       coinTypeA: pool?.coin_a!,
-      coinTypeB: pool?.coin_b!
+      coinTypeB: pool?.coin_b!,
     })
-    const rewards_token = pool_reward_coins.get(position.pool) || [];
-    let positionRewards: DlmmEventEarnedRewards = { position_id: position.pos_object_id, reward: [], amount: [] };
+    const rewards_token = pool_reward_coins.get(position.pool) || []
+    let positionRewards: DlmmEventEarnedRewards = { position_id: position.pos_object_id, reward: [], amount: [] }
     if (rewards_token.length > 0) {
       positionRewards = await this.getEarnedRewards({
         pool_id: position.pool,
@@ -566,18 +662,17 @@ export class DlmmModule implements IModule {
       pool_id: position.pool,
       position_id: position.pos_object_id,
       coin_a: pool?.coin_a!,
-      coin_b: pool?.coin_b!
+      coin_b: pool?.coin_b!,
     })
 
     return {
-      position: position,
+      position,
       liquidity: positionLiquidity,
       rewards: positionRewards,
       fees: positionFees,
-      contractPool: pool
+      contractPool: pool,
     }
   }
-
 
   /**
    * Gets a list of positions for the given account address.
@@ -610,19 +705,19 @@ export class DlmmModule implements IModule {
       }
     }
 
-    const poolMap = new Set<string>();
+    const poolMap = new Set<string>()
     for (const item of allPosition) {
       poolMap.add(item.pool)
     }
-    const poolList = await this.getPoolInfo(Array.from(poolMap));
-    this.updateCache(`${DlmmScript}_positionList_poolList`, poolList, cacheTime24h);
+    const poolList = await this.getPoolInfo(Array.from(poolMap))
+    this.updateCache(`${DlmmScript}_positionList_poolList`, poolList, cacheTime24h)
     const _params: GetPairRewarderParams[] = []
 
     for (const pool of poolList) {
       _params.push({
         pool_id: pool.pool_id,
         coin_a: pool.coin_a,
-        coin_b: pool.coin_b
+        coin_b: pool.coin_b,
       })
     }
 
@@ -634,15 +729,15 @@ export class DlmmModule implements IModule {
     // 2. Get rewards
     // 3. Get fees
     for (const item of allPosition) {
-      const pool = poolList.find((pool) => pool.pool_id === item.pool);
+      const pool = poolList.find((pool) => pool.pool_id === item.pool)
       const positionLiquidity = await this.getPositionLiquidity({
         pair: item.pool,
         positionId: item.pos_object_id,
         coinTypeA: pool?.coin_a!,
-        coinTypeB: pool?.coin_b!
+        coinTypeB: pool?.coin_b!,
       })
-      const rewards_token = pool_reward_coins.get(item.pool) || [];
-      let positionRewards: DlmmEventEarnedRewards = { position_id: item.pos_object_id, reward: [], amount: [] };
+      const rewards_token = pool_reward_coins.get(item.pool) || []
+      let positionRewards: DlmmEventEarnedRewards = { position_id: item.pos_object_id, reward: [], amount: [] }
       if (rewards_token.length > 0) {
         positionRewards = await this.getEarnedRewards({
           pool_id: item.pool,
@@ -657,14 +752,14 @@ export class DlmmModule implements IModule {
         pool_id: item.pool,
         position_id: item.pos_object_id,
         coin_a: pool?.coin_a!,
-        coin_b: pool?.coin_b!
+        coin_b: pool?.coin_b!,
       })
       out.push({
         position: item,
         liquidity: positionLiquidity,
         rewards: positionRewards,
         fees: positionFees,
-        contractPool: pool
+        contractPool: pool,
       })
     }
 
@@ -685,7 +780,7 @@ export class DlmmModule implements IModule {
       pos_object_id: fields.id.id,
       owner: ownerWarp.AddressOwner,
       pool: fields.pair_id,
-      bin_real_ids: (fields.bin_ids as number[]).map(id => get_real_id(id)),
+      bin_real_ids: (fields.bin_ids as number[]).map((id) => get_real_id(id)),
       type: '',
     }
   }
@@ -751,7 +846,7 @@ export class DlmmModule implements IModule {
         out.liquidity = item.parsedJson.liquidity
         out.x_equivalent = item.parsedJson.x_equivalent
         out.y_equivalent = item.parsedJson.y_equivalent
-        out.bin_real_ids = (item.parsedJson.bin_ids as number[]).map(id => get_real_id(id))
+        out.bin_real_ids = (item.parsedJson.bin_ids as number[]).map((id) => get_real_id(id))
         out.bin_x_eq = item.parsedJson.bin_x_eq
         out.bin_y_eq = item.parsedJson.bin_y_eq
         out.bin_liquidity = item.parsedJson.bin_liquidity
@@ -831,7 +926,7 @@ export class DlmmModule implements IModule {
       fee_y: 0,
     }
     if (simulateRes.error != null) {
-      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`fetchPairRewards error code: ${simulateRes.error ?? 'unknown error'}`)
     }
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventPositionLiquidity`) {
@@ -851,7 +946,7 @@ export class DlmmModule implements IModule {
 
     const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
 
-    const args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS),]
+    const args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
     let target = `${integrate.published_at}::${DlmmScript}::earned_rewards`
     if (params.rewards_token.length > 1) {
       target = `${integrate.published_at}::${DlmmScript}::earned_rewards${params.rewards_token.length}`
@@ -948,7 +1043,6 @@ export class DlmmModule implements IModule {
     })
     return out
   }
-
 
   /**
    * Updates the cache for the given key.

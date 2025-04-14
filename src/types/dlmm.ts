@@ -246,5 +246,19 @@ export type DlmmPositionInfo = {
   liquidity: EventPositionLiquidity
   rewards: DlmmEventEarnedRewards
   fees: DlmmEventEarnedFees
-  contractPool: DlmmPoolInfo | undefined;
+  contractPool: DlmmPoolInfo | undefined
+}
+
+export type MintByStrategyParams = {
+  pair: string
+  bin_step: number
+  coinTypeA: string
+  coinTypeB: string
+  amountATotal: number // u64
+  amountBTotal: number // u64
+  strategy: number // u8
+  min_bin: number // u32
+  max_bin: number // u32
+  active_bin: number // RealID. Used for calc slippage
+  slippage: number // base 10000
 }
