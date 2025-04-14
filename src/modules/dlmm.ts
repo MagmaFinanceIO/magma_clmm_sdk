@@ -1,6 +1,6 @@
 import { Transaction } from '@mysten/sui/transactions'
 import { SuiObjectResponse } from '@mysten/sui/client'
-import { get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
+import { get_price_x128_from_real_id, get_real_id_from_price_x128, get_storage_id_from_real_id } from '@magmaprotocol/calc_dlmm'
 import Decimal from 'decimal.js'
 import {
   EventBin,
@@ -29,12 +29,14 @@ import {
   DlmmCreatePairAddLiquidityParams,
   DlmmPosition,
   DlmmPositionInfo,
+  MintByStrategyParams,
 } from '../types/dlmm'
 import { extractStructTagFromType, getObjectFields, getObjectOwner, getObjectType, TransactionUtil } from '../utils'
 import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs } from '../types'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
+import BN from 'bn.js'
 
 export class DlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -151,6 +153,68 @@ export class DlmmModule implements IModule {
 
     tx.moveCall({
       target: `${integrate.published_at}::${DlmmScript}::create_pair`,
+      typeArguments,
+      arguments: args,
+    })
+    return tx
+  }
+
+  async mintByStrategy(params: MintByStrategyParams): Promise<Transaction> {
+    const tx = new Transaction()
+    const slippage = new Decimal(params.slippage)
+    const lower_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
+    const upper_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
+
+    tx.setSender(this.sdk.senderAddress)
+
+    const { dlmm_pool, integrate } = this.sdk.sdkOptions
+    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+
+    const typeArguments = [params.coinTypeA, params.coinTypeB]
+
+    const price = get_price_x128_from_real_id(params.active_bin, params.bin_step)
+    const min_price = new Decimal(price).mul(lower_slippage)
+    const max_price = new Decimal(price).mul(upper_slippage)
+
+    const active_min = get_storage_id_from_real_id(get_real_id_from_price_x128(min_price.toDecimalPlaces(0).toString(), params.bin_step))
+    const active_max = get_storage_id_from_real_id(get_real_id_from_price_x128(max_price.toDecimalPlaces(0).toString(), params.bin_step))
+
+    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    let primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+    let primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+
+    let amount_min = 0
+    let amount_max = 0
+    if (params.amountATotal !== 0) {
+      amount_min = new Decimal(params.amountATotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountATotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
+    }
+    if (params.amountBTotal !== 0) {
+      amount_min = new Decimal(params.amountBTotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountBTotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
+    }
+
+    const args = [
+      tx.object(params.pair),
+      tx.object(dlmmConfig.factory),
+      primaryCoinAInputs.targetCoin,
+      primaryCoinBInputs.targetCoin,
+      tx.pure.u64(params.amountATotal),
+      tx.pure.u64(params.amountBTotal),
+      tx.pure.u8(params.strategy),
+      tx.pure.u32(params.min_bin),
+      tx.pure.u32(params.max_bin),
+      tx.pure.u32(active_min),
+      tx.pure.u32(active_max),
+      tx.pure.u64(amount_min),
+      tx.pure.u64(amount_max),
+      tx.object(CLOCK_ADDRESS),
+    ]
+
+    tx.moveCall({
+      target: `${integrate.published_at}::${DlmmScript}::mint_percent`,
       typeArguments,
       arguments: args,
     })
@@ -454,11 +518,30 @@ export class DlmmModule implements IModule {
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
+    const allCoinAsset = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    const primaryCoinInputA = TransactionUtil.buildCoinForAmount(
+      tx,
+      allCoinAsset,
+      params.swapForY ? BigInt(params.amountIn) : BigInt(0),
+      params.coinTypeA,
+      false,
+      true
+    )
+
+    const primaryCoinInputB = TransactionUtil.buildCoinForAmount(
+      tx,
+      allCoinAsset,
+      params.swapForY ? BigInt(0) : BigInt(params.amountIn),
+      params.coinTypeB,
+      false,
+      true
+    )
+
     const args = [
       tx.object(params.pair),
       tx.object(global_config_id),
-      tx.object(params.coinTypeA),
-      tx.object(params.coinTypeB),
+      primaryCoinInputA.targetCoin,
+      primaryCoinInputB.targetCoin,
       tx.pure.u64(params.amountIn),
       tx.pure.u64(params.minAmountOut),
       tx.pure.bool(params.swapForY),
@@ -833,7 +916,7 @@ export class DlmmModule implements IModule {
 
     const out = new Map<string, string[]>()
     if (simulateRes.error != null) {
-      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`fetchPairRewards error code: ${simulateRes.error ?? 'unknown error'}`)
     }
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventPairRewardTypes`) {
