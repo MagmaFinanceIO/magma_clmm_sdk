@@ -256,6 +256,8 @@ export type MintByStrategyParams = {
   coinTypeB: string
   amountATotal: number // u64
   amountBTotal: number // u64
+  fixCoinA: boolean
+  fixCoinB: boolean
   strategy: number // u8
   min_bin: number // u32
   max_bin: number // u32
