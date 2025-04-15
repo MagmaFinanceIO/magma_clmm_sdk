@@ -43,7 +43,7 @@ Our SDK now includes a default initialization method that allows for quick gener
 ```typescript
 import { initMagmaSDK } from '@magmaprotocol/magma-clmm-sdk'
 
-const magmaClmmSDK = initMagmaSDK({network: 'mainnet'})
+const magmaClmmSDK = initMagmaSDK({ network: 'mainnet' })
 ```
 
 If you wish to set your own full node URL and simulate address, you can do so as follows:
@@ -51,24 +51,28 @@ If you wish to set your own full node URL and simulate address, you can do so as
 ```typescript
 import { initMagmaSDK } from '@magmaprotocol/magma-clmm-sdk'
 
-const network = 'mainnnet';
-const fullNodeUrl = "https://..."
-const simulationAccount = "0x..."
-const magmaClmmSDK = initMagmaSDK({network, fullNodeUrl, simulationAccount})
+const network = 'mainnnet'
+const fullNodeUrl = 'https://...'
+const simulationAccount = '0x...'
+const magmaClmmSDK = initMagmaSDK({ network, fullNodeUrl, simulationAccount })
 ```
 
 Now, you can start using Magma SDK.
 
 ### Typrscript Doc
+
 You can view this typescript sdk in
 <a href="https://github.com/MagmaFinanceIO/magma_sdk_doc"><strong> Magma Development Documents. </strong></a>
 <br />
 
 ## LICENSE
+
 MAGMA-CLMM-SDK released under the Apache license. See the [LICENSE](./LICENSE) file for details.
 
 ## More About Magma
+
 Use the following links to learn more about Magma:
+
 - [ ] Learn more about working with Magma in the [Magma Documentation]().
 
 - [ ] Join the Magma community on [Magma Discord]().

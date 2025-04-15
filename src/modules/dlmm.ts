@@ -7,7 +7,7 @@ import {
   get_storage_id_from_real_id,
 } from '@magmaprotocol/calc_dlmm'
 import Decimal from 'decimal.js'
-import { BinMath } from 'src/math'
+import { BinMath } from '../math'
 import {
   EventBin,
   CreatePairParams,
@@ -168,10 +168,12 @@ export class DlmmModule implements IModule {
     return tx
   }
 
+  // async mintByStrategySingle(params: MintByStrategySingleParams): Promise<Transaction> {}
+
   async mintByStrategy(params: MintByStrategyParams): Promise<Transaction> {
     const tx = new Transaction()
     const slippage = new Decimal(params.slippage)
-    const lower_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
+    const lower_slippage = new Decimal(1).sub(slippage.div(new Decimal(10000)))
     const upper_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
 
     tx.setSender(this.sdk.senderAddress)
@@ -195,13 +197,13 @@ export class DlmmModule implements IModule {
     let amount_min = 0
     let amount_max = 0
     if (params.fixCoinA) {
-      amount_min = new Decimal(params.amountATotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
-      amount_max = new Decimal(params.amountATotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      amount_min = new Decimal(params.amountBTotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountBTotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
       primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
     }
     if (params.fixCoinB) {
-      amount_min = new Decimal(params.amountBTotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
-      amount_max = new Decimal(params.amountBTotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      amount_min = new Decimal(params.amountATotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountATotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
       primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
     }
 
@@ -220,8 +222,8 @@ export class DlmmModule implements IModule {
       tx.pure.u64(params.amountATotal),
       tx.pure.u64(params.amountBTotal),
       tx.pure.u8(params.strategy),
-      tx.pure.u32(params.min_bin),
-      tx.pure.u32(params.max_bin),
+      tx.pure.u32(get_storage_id_from_real_id(params.min_bin)),
+      tx.pure.u32(get_storage_id_from_real_id(params.max_bin)),
       tx.pure.u32(active_min),
       tx.pure.u32(active_max),
       tx.pure.u64(amount_min),
@@ -230,7 +232,7 @@ export class DlmmModule implements IModule {
     ]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::mint_percent`,
+      target: `${integrate.published_at}::${DlmmScript}::mint_by_strategy`,
       typeArguments,
       arguments: args,
     })
@@ -650,8 +652,8 @@ export class DlmmModule implements IModule {
     const positionLiquidity = await this.getPositionLiquidity({
       pair: position.pool,
       positionId: position.pos_object_id,
-      coinTypeA: pool?.coin_a!,
-      coinTypeB: pool?.coin_b!,
+      coinTypeA: pool!.coin_a,
+      coinTypeB: pool!.coin_b,
     })
     const rewards_token = pool_reward_coins.get(position.pool) || []
     let positionRewards: DlmmEventEarnedRewards = { position_id: position.pos_object_id, reward: [], amount: [] }
@@ -659,8 +661,8 @@ export class DlmmModule implements IModule {
       positionRewards = await this.getEarnedRewards({
         pool_id: position.pool,
         position_id: position.pos_object_id,
-        coin_a: pool?.coin_a!,
-        coin_b: pool?.coin_b!,
+        coin_a: pool!.coin_a,
+        coin_b: pool!.coin_b,
         rewards_token: pool_reward_coins.get(position.pool) || [],
       })
     }
@@ -668,8 +670,8 @@ export class DlmmModule implements IModule {
     const positionFees = await this.getEarnedFees({
       pool_id: position.pool,
       position_id: position.pos_object_id,
-      coin_a: pool?.coin_a!,
-      coin_b: pool?.coin_b!,
+      coin_a: pool!.coin_a,
+      coin_b: pool!.coin_b,
     })
 
     return {
@@ -740,8 +742,8 @@ export class DlmmModule implements IModule {
       const positionLiquidity = await this.getPositionLiquidity({
         pair: item.pool,
         positionId: item.pos_object_id,
-        coinTypeA: pool?.coin_a!,
-        coinTypeB: pool?.coin_b!,
+        coinTypeA: pool!.coin_a,
+        coinTypeB: pool!.coin_b,
       })
       const rewards_token = pool_reward_coins.get(item.pool) || []
       let positionRewards: DlmmEventEarnedRewards = { position_id: item.pos_object_id, reward: [], amount: [] }
@@ -749,8 +751,8 @@ export class DlmmModule implements IModule {
         positionRewards = await this.getEarnedRewards({
           pool_id: item.pool,
           position_id: item.pos_object_id,
-          coin_a: pool?.coin_a!,
-          coin_b: pool?.coin_b!,
+          coin_a: pool!.coin_a,
+          coin_b: pool!.coin_b,
           rewards_token: pool_reward_coins.get(item.pool) || [],
         })
       }
@@ -758,8 +760,8 @@ export class DlmmModule implements IModule {
       const positionFees = await this.getEarnedFees({
         pool_id: item.pool,
         position_id: item.pos_object_id,
-        coin_a: pool?.coin_a!,
-        coin_b: pool?.coin_b!,
+        coin_a: pool!.coin_a,
+        coin_b: pool!.coin_b,
       })
       out.push({
         position: item,

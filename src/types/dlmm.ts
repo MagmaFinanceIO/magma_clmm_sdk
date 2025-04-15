@@ -259,8 +259,8 @@ export type MintByStrategyParams = {
   fixCoinA: boolean
   fixCoinB: boolean
   strategy: number // u8
-  min_bin: number // u32
-  max_bin: number // u32
+  min_bin: number // RealID. u32
+  max_bin: number // RealID. u32
   active_bin: number // RealID. Used for calc slippage
   slippage: number // base 10000
 }
