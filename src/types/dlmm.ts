@@ -226,8 +226,8 @@ export type DlmmCreatePairAddLiquidityParams = {
   binStep: number // u16,
   coinTypeA: string
   coinTypeB: string
-  activeId: number // u32,
-  storageIds: number[]
+  activeId: number // RealID, u32,
+  realIds: number[]
   amountsX: number[]
   amountsY: number[]
   to: string

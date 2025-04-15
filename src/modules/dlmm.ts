@@ -500,7 +500,8 @@ export class DlmmModule implements IModule {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { dlmm_pool, integrate } = this.sdk.sdkOptions
+    const { clmm_pool, dlmm_pool, integrate } = this.sdk.sdkOptions
+    const { global_config_id } = getPackagerConfigs(clmm_pool)
     const dlmmConfig = getPackagerConfigs(dlmm_pool)
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
@@ -512,14 +513,19 @@ export class DlmmModule implements IModule {
     const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountATotal), params.coinTypeA, false, true)
     const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountBTotal), params.coinTypeB, false, true)
 
+    const storageIds: number[] = []
+    params.realIds.forEach((i) => {
+      storageIds.push(get_storage_id_from_real_id(i))
+    })
     const args = [
       tx.object(dlmmConfig.factory),
+      tx.object(global_config_id),
       tx.pure.u64(params.baseFee),
       tx.pure.u16(params.binStep),
-      tx.pure.u32(params.activeId),
+      tx.pure.u32(get_storage_id_from_real_id(params.activeId)),
       primaryCoinAInputs.targetCoin,
       primaryCoinBInputs.targetCoin,
-      tx.pure.vector('u32', params.storageIds),
+      tx.pure.vector('u32', storageIds),
       tx.pure.vector('u64', params.amountsX),
       tx.pure.vector('u64', params.amountsY),
       tx.pure.address(params.to),
