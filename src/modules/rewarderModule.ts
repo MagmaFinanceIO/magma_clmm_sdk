@@ -509,54 +509,23 @@ export class RewarderModule implements IModule {
    * @param tx
    * @returns
    */
-  async batchCollectRewardePayload(
-    params: CollectRewarderParams[],
-    tx?: Transaction,
-    inputCoinA?: TransactionObjectArgument,
-    inputCoinB?: TransactionObjectArgument
-  ) {
+  async batchCollectRewardePayload(params: CollectRewarderParams[], tx?: Transaction) {
     if (!checkInvalidSuiAddress(this._sdk.senderAddress)) {
       throw new ClmmpoolsError('this config sdk senderAddress is not set right', UtilsErrorCode.InvalidSendAddress)
     }
     const allCoinAsset = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress, null)
     tx = tx || new Transaction()
-    const coinIdMaps: Record<string, BuildCoinResult> = {}
+    const coinIdList: { coin: BuildCoinResult; coin_addr: string }[] = []
     params.forEach((item) => {
       const coinTypeA = normalizeCoinType(item.coinTypeA)
       const coinTypeB = normalizeCoinType(item.coinTypeB)
 
       if (item.collect_fee) {
-        let coinAInput = coinIdMaps[coinTypeA]
-        if (coinAInput == null) {
-          if (inputCoinA == null) {
-            coinAInput = TransactionUtil.buildCoinForAmount(tx!, allCoinAsset!, BigInt(0), coinTypeA, false)
-          } else {
-            coinAInput = {
-              targetCoin: inputCoinA,
-              remainCoins: [],
-              isMintZeroCoin: false,
-              tragetCoinAmount: '0',
-            }
-          }
+        const coinAInput = TransactionUtil.buildCoinForAmount(tx!, allCoinAsset!, BigInt(0), coinTypeA, false, true)
+        const coinBInput = TransactionUtil.buildCoinForAmount(tx!, allCoinAsset!, BigInt(0), coinTypeB, false, true)
 
-          coinIdMaps[coinTypeA] = coinAInput
-        }
-
-        let coinBInput = coinIdMaps[coinTypeB]
-        if (coinBInput == null) {
-          if (inputCoinB == null) {
-            coinBInput = TransactionUtil.buildCoinForAmount(tx!, allCoinAsset!, BigInt(0), coinTypeB, false)
-          } else {
-            coinBInput = {
-              targetCoin: inputCoinB,
-              remainCoins: [],
-              isMintZeroCoin: false,
-              tragetCoinAmount: '0',
-            }
-          }
-
-          coinIdMaps[coinTypeB] = coinBInput
-        }
+        coinIdList.push({ coin: coinAInput, coin_addr: coinTypeA })
+        coinIdList.push({ coin: coinBInput, coin_addr: coinTypeB })
 
         tx = this._sdk.Position.createCollectFeeNoSendPaylod(
           {
@@ -573,22 +542,17 @@ export class RewarderModule implements IModule {
       const primaryCoinInputs: TransactionObjectArgument[] = []
       item.rewarder_coin_types.forEach((type) => {
         const coinType = normalizeCoinType(type)
-        let coinInput = coinIdMaps[type]
-        if (coinInput === undefined) {
-          coinInput = TransactionUtil.buildCoinForAmount(tx!, allCoinAsset!, BigInt(0), coinType, false)
-          coinIdMaps[coinType] = coinInput
-        }
+        const coinInput = TransactionUtil.buildCoinForAmount(tx!, allCoinAsset!, BigInt(0), coinType, false, true)
         primaryCoinInputs.push(coinInput.targetCoin)
+
+        coinIdList.push({ coin: coinInput, coin_addr: coinType })
       })
 
       tx = this.createCollectRewarderNoSendPaylod(item, tx!, primaryCoinInputs)
     })
 
-    Object.keys(coinIdMaps).forEach((key) => {
-      const value = coinIdMaps[key]
-      if (value.isMintZeroCoin) {
-        TransactionUtil.buildTransferCoin(this._sdk, tx!, value.targetCoin, key, this._sdk.senderAddress)
-      }
+    coinIdList.forEach((item) => {
+      TransactionUtil.buildTransferCoin(this._sdk, tx!, item.coin.targetCoin, item.coin_addr, this._sdk.senderAddress)
     })
 
     return tx
