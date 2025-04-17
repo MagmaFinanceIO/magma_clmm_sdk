@@ -196,12 +196,14 @@ export class DlmmModule implements IModule {
 
     let amount_min = 0
     let amount_max = 0
-    if (params.fixCoinA) {
+    if (params.fixCoinA && params.fixCoinB) {
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeB, false, true)
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+    } else if (params.fixCoinA) {
       amount_min = new Decimal(params.amountBTotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
       amount_max = new Decimal(params.amountBTotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
       primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
-    }
-    if (params.fixCoinB) {
+    } else if (params.fixCoinB) {
       amount_min = new Decimal(params.amountATotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
       amount_max = new Decimal(params.amountATotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
       primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)

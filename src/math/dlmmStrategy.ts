@@ -425,10 +425,28 @@ export function toAmountsBothSideByStrategy(
       return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
     }
     case StrategyType.Curve: {
+      if (activeId < minBinId) {
+        const weights = toWeightDecendingOrder(minBinId, maxBinId)
+        return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      }
+      if (activeId > maxBinId) {
+        const weights = toWeightAscendingOrder(minBinId, maxBinId)
+        return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      }
+
       const weights = toWeightCurve(minBinId, maxBinId, activeId)
       return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
     }
     case StrategyType.BidAsk: {
+      if (activeId < minBinId) {
+        const weights = toWeightAscendingOrder(minBinId, maxBinId)
+        return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      }
+      if (activeId > maxBinId) {
+        const weights = toWeightDecendingOrder(minBinId, maxBinId)
+        return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      }
+
       const weights = toWeightBidAsk(minBinId, maxBinId, activeId)
       return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
     }

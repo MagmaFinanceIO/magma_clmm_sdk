@@ -253,9 +253,6 @@ export function toAmountBothSide(
   amountXInActiveBin: BN,
   amountYInActiveBin: BN,
   distributions: { binId: number; weight: number }[]
-  // mintX: Mint,
-  // mintY: Mint,
-  // clock: Clock
 ): {
   binId: number
   amountX: BN
