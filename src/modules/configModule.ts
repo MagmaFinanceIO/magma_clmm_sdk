@@ -401,16 +401,9 @@ export class ConfigModule implements IModule {
       launchpad_pools_id: '',
       clmm_pools_id: '',
       admin_cap_id: '',
-      global_config_id: '',
       coin_list_handle: '',
       launchpad_pools_handle: '',
       clmm_pools_handle: '',
-      voter_id: '',
-      minter_id: '',
-      reward_distributor_id: '',
-      distribution_cfg: '',
-      magma_token: '',
-      voting_escrow_id: '',
     }
 
     if (objects.data.length > 0) {
@@ -427,7 +420,6 @@ export class ConfigModule implements IModule {
             tokenConfig.clmm_pools_id = item.parsedJson.pools_id
             break
           case `InitConfigEvent`:
-            tokenConfig.global_config_id = item.parsedJson.global_config_id
             tokenConfig.admin_cap_id = item.parsedJson.admin_cap_id
             break
           default:

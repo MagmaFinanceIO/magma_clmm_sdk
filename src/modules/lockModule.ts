@@ -214,8 +214,8 @@ export class LockModule implements IModule {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { integrate } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token, params.coinType]
     const allCoinAsset = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
     const coinInput = TransactionUtil.buildCoinForAmount(tx, allCoinAsset, BigInt(params.amount), params.coinType, false, true)
@@ -249,8 +249,8 @@ export class LockModule implements IModule {
       throw Error('incentiveTokens length must be between 1 and 3')
     }
 
-    const { integrate } = this.sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = this.sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token, ...feeTokens, ...incentiveTokens]
 
     let targetFunc = `${integrate.published_at}::${Voter}::claim_voting_bribes_for_single_pool${incentiveTokens.length}`
@@ -271,8 +271,8 @@ export class LockModule implements IModule {
 
   async fastLocksOfUser(user: string): Promise<LocksInfo> {
     const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
-    const { distribution } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
-    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { distribution, ve33 } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(ve33)
 
     // all objects
     const ownerRes = await this._sdk.fullClient.getOwnedObjectsByPage(user, {
@@ -312,8 +312,8 @@ export class LockModule implements IModule {
 
   async locksOfUserV2(user: string): Promise<LocksInfo> {
     const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
-    const { distribution } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
-    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { distribution, ve33 } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(ve33)
 
     // all objects
     const ownerRes = await this._sdk.fullClient.getOwnedObjectsByPage(user, {
@@ -375,8 +375,8 @@ export class LockModule implements IModule {
 
   async locksOfUser(user: string): Promise<LocksInfo> {
     const locksInfo: LocksInfo = { owner: user, lockInfo: [] }
-    const { distribution } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
-    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { distribution, ve33 } = this._sdk.sdkOptions //  getPackagerConfigs(this._sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(ve33)
 
     // all objects
     const ownerRes = await this._sdk.fullClient.getOwnedObjectsByPage(user, {
@@ -479,7 +479,7 @@ export class LockModule implements IModule {
       )
     }
 
-    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
 
     const aLockSummary = await this.aLockSummary(lockId)
     const poolIncentiveTokens = await this.getVotingBribeRewardTokens(lockId)
@@ -547,8 +547,8 @@ export class LockModule implements IModule {
 
   async aLockSummary(lock_id: string): Promise<ALockSummary> {
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id, reward_distributor_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id, reward_distributor_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const args = [
@@ -609,8 +609,8 @@ export class LockModule implements IModule {
   async _aLockSummary(lock_id: string, tx?: Transaction): Promise<Transaction> {
     tx = tx || new Transaction()
 
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id, reward_distributor_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id, reward_distributor_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     if (!checkInvalidSuiAddress(simulationAccount.address)) {
@@ -660,8 +660,8 @@ export class LockModule implements IModule {
 
   async allLockSummary(): Promise<AllLockSummary> {
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id, minter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id, minter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const args = [tx.object(minter_id), tx.object(voter_id), tx.object(voting_escrow_id), tx.object(CLOCK_ADDRESS)]
@@ -711,8 +711,8 @@ export class LockModule implements IModule {
 
   async poolWeights(pools: string[]): Promise<PoolWeight[]> {
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const poolsParams = tx.pure.vector('id', pools)
@@ -760,8 +760,8 @@ export class LockModule implements IModule {
 
   async _getVotingFeeRewardTokens(lock_id: string, tx?: Transaction): Promise<Transaction> {
     tx = tx || new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const args = [tx.object(voter_id), tx.object(lock_id)]
@@ -809,8 +809,8 @@ export class LockModule implements IModule {
 
   async getVotingFeeRewardTokens(lock_id: string) {
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const args = [tx.object(voter_id), tx.object(lock_id)]
@@ -861,8 +861,8 @@ export class LockModule implements IModule {
 
   async _getVotingBribeRewardTokens(lock_id: string, tx?: Transaction): Promise<Transaction> {
     tx = tx || new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     if (!checkInvalidSuiAddress(simulationAccount.address)) {
@@ -911,8 +911,8 @@ export class LockModule implements IModule {
   // Return PoolId => tokens
   async getVotingBribeRewardTokens(lock_id: string) {
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     if (!checkInvalidSuiAddress(simulationAccount.address)) {
@@ -975,8 +975,8 @@ export class LockModule implements IModule {
 
   _getFeeRewardsInner(lock_id: LockID, token_a: string, token_b: string, tx?: Transaction): Transaction {
     tx = tx || new Transaction()
-    const { integrate } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token, token_a, token_b]
 
     const args = [tx.object(voter_id), tx.object(lock_id), tx.object(CLOCK_ADDRESS)]
@@ -1045,8 +1045,8 @@ export class LockModule implements IModule {
   // if you have many tokens, call this function multi times
   async _getPoolFeeRewards(lock_id: string, token_a: string, token_b: string, poolFeeRewardTokens: Map<string, Map<string, string>>) {
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token, token_a, token_b]
 
     const args = [tx.object(voter_id), tx.object(lock_id), tx.object(CLOCK_ADDRESS)]
@@ -1112,8 +1112,8 @@ export class LockModule implements IModule {
     }
 
     // const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token, ...incentive_tokens]
 
     const args = [tx.object(voter_id), tx.object(locksId), tx.object(CLOCK_ADDRESS)]
@@ -1195,8 +1195,8 @@ export class LockModule implements IModule {
     }
 
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token, ...incentive_tokens]
 
     const args = [tx.object(voter_id), tx.object(locksId), tx.object(CLOCK_ADDRESS)]
@@ -1242,8 +1242,8 @@ export class LockModule implements IModule {
 
   async getPoolBribeRewardTokens(pool_id: string) {
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const args = [tx.object(voter_id), tx.object(pool_id)]
@@ -1284,8 +1284,8 @@ export class LockModule implements IModule {
 
   async getLockVotingStats(lockId: string) {
     const tx = new Transaction()
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, ve33 } = this.sdk.sdkOptions
+    const { magma_token, voter_id } = getPackagerConfigs(ve33)
 
     const args = [tx.object(voter_id), tx.object(lockId), tx.object(CLOCK_ADDRESS)]
     const typeArguments = [magma_token]

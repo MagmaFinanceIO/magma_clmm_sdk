@@ -196,8 +196,8 @@ export class SwapModule implements IModule {
    * @returns {Promise<PreSwapParams>} A promise that resolves to the swap data.
    */
   async preswap(params: PreSwapParams) {
-    const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { global_config_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { integrate, simulationAccount, clmm_pool } = this.sdk.sdkOptions
+    const { global_config_id } = getPackagerConfigs(clmm_pool)
 
     const tx = new Transaction()
 

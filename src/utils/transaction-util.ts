@@ -745,7 +745,7 @@ export class TransactionUtil {
     let tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(sdk.sdkOptions.ve33)
     const lockCoinInput = TransactionUtil.buildCoinForAmount(tx, allCoinAsset, BigInt(params.amount), magma_token, false, true)
     tx = TransactionUtil.buildCreateTransactionArgs(tx, params, sdk.sdkOptions, lockCoinInput)
     return tx
@@ -757,8 +757,8 @@ export class TransactionUtil {
     sdkOptions: SdkOptions,
     lockCoinInput: BuildCoinResult
   ): Transaction {
-    const { integrate } = sdkOptions
-    const { voting_escrow_id, magma_token } = getPackagerConfigs(sdkOptions.magma_config)
+    const { integrate, ve33 } = sdkOptions
+    const { voting_escrow_id, magma_token } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'create_lock'
@@ -780,7 +780,7 @@ export class TransactionUtil {
   }
 
   static buildIncreaseLockAmountTransaction(sdk: SDK, params: IncreaseLockAmountParams, allCoinAsset: CoinAsset[]): Transaction {
-    const { magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(sdk.sdkOptions.ve33)
 
     let tx = new Transaction()
     tx.setSender(sdk.senderAddress)
@@ -796,8 +796,8 @@ export class TransactionUtil {
     sdkOptions: SdkOptions,
     increaseCoinInput: BuildCoinResult
   ): Transaction {
-    const { integrate } = sdkOptions
-    const { voting_escrow_id, magma_token } = getPackagerConfigs(sdkOptions.magma_config)
+    const { integrate, ve33 } = sdkOptions
+    const { voting_escrow_id, magma_token } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'increase_amount_single_coin'
@@ -816,8 +816,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { voter_id, voting_escrow_id, magma_token, distribution_cfg } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voter_id, voting_escrow_id, magma_token, distribution_cfg } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'merge_locks'
@@ -843,8 +843,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'transfer'
@@ -866,8 +866,8 @@ export class TransactionUtil {
     const oneDay = 24 * 60 * 60
     const newLockDuration = Math.ceil((params.newLockEndAt - Date.now() / 1000) / oneDay)
 
-    const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'increase_unlock_time'
@@ -886,8 +886,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'lock_permanent'
@@ -906,8 +906,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'unlock_permanent'
@@ -932,8 +932,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'burn_lock'
@@ -958,8 +958,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, distribution_cfg, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'split_lock'
@@ -985,8 +985,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { distribution_cfg, voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { distribution_cfg, voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'vote'
@@ -1018,8 +1018,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(ve33)
 
     const typeArguments = [magma_token, params.coinAType, params.coinBType]
     const functionName = 'claim_voting_fee_rewards_single'
@@ -1037,8 +1037,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate, distribution } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, distribution, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(ve33)
 
     const typeArguments = [magma_token, params.coinAType, params.coinBType]
     const functionName = 'claim_voting_fee_rewards'
@@ -1060,8 +1060,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, reward_distributor_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, reward_distributor_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'claim_and_lock'
@@ -1079,8 +1079,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate } = sdk.sdkOptions
-    const { distribution_cfg, voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, ve33 } = sdk.sdkOptions
+    const { distribution_cfg, voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token]
 
     const functionName = 'poke'
@@ -1104,8 +1104,8 @@ export class TransactionUtil {
     const tx = new Transaction()
     tx.setSender(sdk.senderAddress)
 
-    const { integrate, distribution } = sdk.sdkOptions
-    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(sdk.sdkOptions.magma_config)
+    const { integrate, distribution, ve33 } = sdk.sdkOptions
+    const { voting_escrow_id, magma_token, voter_id } = getPackagerConfigs(ve33)
     const typeArguments = [magma_token, ...incentive_tokens]
 
     let targetFunc = `${integrate.published_at}::${Voter}::claim_voting_bribes_${incentive_tokens.length}`

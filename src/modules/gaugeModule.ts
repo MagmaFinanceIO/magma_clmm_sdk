@@ -36,7 +36,7 @@ export class GaugeModule implements IModule {
       throw Error(`Fetch gauge of pool ${params.poolId} failed`)
     }
 
-    const { distribution_cfg, magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { distribution_cfg, magma_token } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
     const { clmm_pool, integrate } = this.sdk.sdkOptions
     const clmmConfig = getPackagerConfigs(clmm_pool)
 
@@ -68,7 +68,7 @@ export class GaugeModule implements IModule {
       throw Error(`Fetch gauge of pool ${params.poolId} failed`)
     }
 
-    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
     const { integrate } = this.sdk.sdkOptions
 
     const typeArguments = [params.coinTypeA, params.coinTypeB, magma_token]
@@ -124,7 +124,7 @@ export class GaugeModule implements IModule {
   async getUserStakedPositionInfoOfPool(userAddr: string, pool: string, gauger: string, poolCoinA: string, poolCoinB: string) {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
 
     const typeArguments = [poolCoinA, poolCoinB, magma_token]
 
@@ -157,7 +157,7 @@ export class GaugeModule implements IModule {
   async getPoolGaguers() {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
 
     const typeArguments = [magma_token]
     const args = [tx.object(voter_id)]
@@ -210,7 +210,7 @@ export class GaugeModule implements IModule {
   async getEmissions() {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, minter_id, voting_escrow_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { magma_token, minter_id, voting_escrow_id } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
 
     const typeArguments = [magma_token]
 
@@ -252,7 +252,7 @@ export class GaugeModule implements IModule {
   async getRewardByPosition(params: GetRewardByPosition): Promise<Transaction> {
     const tx = new Transaction()
     const { integrate } = this.sdk.sdkOptions
-    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
 
     const typeArguments = [params.coinTypeA, params.coinTypeB, magma_token]
     const args = [tx.object(params.gaugeId), tx.object(params.poolId), tx.object(params.positionId), tx.object(CLOCK_ADDRESS)]
@@ -268,8 +268,8 @@ export class GaugeModule implements IModule {
   async getAllRewardByPositions(paramsList: GetRewardByPosition[]): Promise<Transaction> {
     const tx = new Transaction()
     const { integrate } = this.sdk.sdkOptions
-    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
-    paramsList.forEach(params => {
+    const { magma_token } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
+    paramsList.forEach((params) => {
       const typeArguments = [params.coinTypeA, params.coinTypeB, magma_token]
       const args = [tx.object(params.gaugeId), tx.object(params.poolId), tx.object(params.positionId), tx.object(CLOCK_ADDRESS)]
       tx.moveCall({
@@ -285,7 +285,7 @@ export class GaugeModule implements IModule {
   async getEpochRewardByPool(pool: string, incentive_tokens: string[]): Promise<Map<string, string>> {
     const tx = new Transaction()
     const { integrate, simulationAccount } = this.sdk.sdkOptions
-    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.magma_config)
+    const { magma_token, voter_id } = getPackagerConfigs(this.sdk.sdkOptions.ve33)
 
     const typeArguments = [magma_token, ...incentive_tokens]
 
