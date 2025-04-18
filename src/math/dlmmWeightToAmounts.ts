@@ -150,8 +150,6 @@ export function toAmountBidSide(
   activeId: number,
   totalAmount: BN,
   distributions: { binId: number; weight: number }[]
-  // mintY: Mint,
-  // clock: Clock
 ): {
   binId: number
   amount: BN
@@ -192,8 +190,6 @@ export function toAmountAskSide(
   binStep: number,
   totalAmount: BN,
   distributions: { binId: number; weight: number }[]
-  // mintX: Mint,
-  // clock: Clock
 ): {
   binId: number
   amount: BN
@@ -259,7 +255,7 @@ export function toAmountBothSide(
   amountY: BN
 }[] {
   // only bid side
-  if (activeId > distributions[distributions.length - 1].binId) {
+  if (activeId > distributions[distributions.length - 1].binId || amountX.isZero()) {
     const amounts = toAmountBidSide(activeId, amountY, distributions)
     return amounts.map((bin) => {
       return {
@@ -270,7 +266,7 @@ export function toAmountBothSide(
     })
   }
   // only ask side
-  if (activeId < distributions[0].binId) {
+  if (activeId < distributions[0].binId || amountY.isZero()) {
     const amounts = toAmountAskSide(activeId, binStep, amountX, distributions)
     return amounts.map((bin) => {
       return {
