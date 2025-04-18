@@ -1,3 +1,5 @@
+import { SuiAddressType, SuiObjectIdType } from './sui'
+
 export type DepositPosition = {
   poolId: string
   positionId: string
@@ -38,4 +40,21 @@ export type GetRewardByPosition = {
   positionId: string
   coinTypeA: string
   coinTypeB: string
+}
+
+export type Ve33Config = {
+  voter_id: SuiObjectIdType
+
+  /**
+   * The object identifier of voting escrow
+   */
+  voting_escrow_id: SuiObjectIdType
+
+  magma_token: SuiAddressType
+
+  reward_distributor_id: SuiObjectIdType
+
+  distribution_cfg: SuiObjectIdType
+
+  minter_id: SuiObjectIdType
 }

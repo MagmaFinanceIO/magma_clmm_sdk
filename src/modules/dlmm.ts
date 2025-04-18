@@ -168,9 +168,19 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  // async mintByStrategySingle(params: MintByStrategySingleParams): Promise<Transaction> {}
-
   async mintByStrategy(params: MintByStrategyParams): Promise<Transaction> {
+    if (params.fixCoinA && params.fixCoinB) {
+      if (params.amountATotal === 0 || params.amountBTotal === 0) {
+        if (params.active_bin < params.max_bin && params.active_bin > params.min_bin) {
+          if (params.amountATotal > 0) {
+            params.min_bin = params.active_bin
+          } else if (params.amountBTotal > 0) {
+            params.max_bin = params.active_bin
+          }
+        }
+      }
+    }
+
     const tx = new Transaction()
     const slippage = new Decimal(params.slippage)
     const lower_slippage = new Decimal(1).sub(slippage.div(new Decimal(10000)))
@@ -221,7 +231,9 @@ export class DlmmModule implements IModule {
       tx.object(dlmmConfig.factory),
       primaryCoinAInputs.targetCoin,
       primaryCoinBInputs.targetCoin,
+      tx.pure.bool(params.fixCoinA),
       tx.pure.u64(params.amountATotal),
+      tx.pure.bool(params.fixCoinB),
       tx.pure.u64(params.amountBTotal),
       tx.pure.u8(params.strategy),
       tx.pure.u32(get_storage_id_from_real_id(params.min_bin)),

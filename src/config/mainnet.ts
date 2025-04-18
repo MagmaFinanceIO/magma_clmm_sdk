@@ -17,8 +17,8 @@ const SDKConfig = {
     coin_list_handle: '0x49136005e90e28c4695419ed4194cc240603f1ea8eb84e62275eaff088a71063',
     launchpad_pools_handle: '0x5e194a8efcf653830daf85a85b52e3ae8f65dc39481d54b2382acda25068375c',
     clmm_pools_handle: '0x37f60eb2d9d227949b95da8fea810db3c32d1e1fa8ed87434fc51664f87d83cb',
-
-    global_config_id: '0x4c4e1402401f72c7d8533d0ed8d5f8949da363c7a3319ccef261ffe153d32f8a',
+  },
+  ve33Config: {
     voter_id: '0xaab0f3a90da96d29d743e09c269e1ae48ec1bae52a28cd38c49c5dc8c1bf92b8',
     voting_escrow_id: '0x7ab45fbe01da26e07ba21757916d540c8747cf7daa88f3171e13db17373d5adc',
     reward_distributor_id: '0x9f4f882245e49fd9213278dfbcb63a14fdbdd2ce7e25e9353a0cecdca30de853',
@@ -37,6 +37,11 @@ export const clmmMainnet: SdkOptions = {
   fullRpcUrl: getFullnodeUrl('mainnet'),
   simulationAccount: {
     address: '0x0000000000000000000000000000000000000000000000000000000000000000',
+  },
+  ve33: {
+    package_id: '0x7ab45fbe01da26e07ba21757916d540c8747cf7daa88f3171e13db17373d5adc',
+    published_at: '0x7ab45fbe01da26e07ba21757916d540c8747cf7daa88f3171e13db17373d5adc',
+    config: SDKConfig.ve33Config,
   },
   magma_config: {
     package_id: '0x95b8d278b876cae22206131fb9724f701c9444515813042f54f0a426c9a3bc2f',
