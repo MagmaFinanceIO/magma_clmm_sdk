@@ -201,19 +201,21 @@ export class DlmmModule implements IModule {
     const active_max = get_storage_id_from_real_id(get_real_id_from_price_x128(max_price.toDecimalPlaces(0).toString(), params.bin_step))
 
     const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
-    let primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
-    let primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
 
     let amount_min = 0
     let amount_max = 0
+    let primaryCoinAInputs
+    let primaryCoinBInputs
     if (params.fixCoinA && params.fixCoinB) {
       primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
       primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
     } else if (params.fixCoinA) {
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
       amount_min = new Decimal(params.amountBTotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
       amount_max = new Decimal(params.amountBTotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
       primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
     } else if (params.fixCoinB) {
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
       amount_min = new Decimal(params.amountATotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
       amount_max = new Decimal(params.amountATotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
       primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeA, false, true)
@@ -229,8 +231,8 @@ export class DlmmModule implements IModule {
     const args = [
       tx.object(params.pair),
       tx.object(dlmmConfig.factory),
-      primaryCoinAInputs.targetCoin,
-      primaryCoinBInputs.targetCoin,
+      primaryCoinAInputs!.targetCoin,
+      primaryCoinBInputs!.targetCoin,
       tx.pure.bool(params.fixCoinA),
       tx.pure.u64(params.amountATotal),
       tx.pure.bool(params.fixCoinB),
