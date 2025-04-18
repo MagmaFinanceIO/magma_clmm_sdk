@@ -922,10 +922,10 @@
     "@jridgewell/resolve-uri" "3.1.0"
     "@jridgewell/sourcemap-codec" "1.4.14"
 
-"@magmaprotocol/calc_dlmm@^0.2.2":
-  version "0.2.2"
-  resolved "https://registry.yarnpkg.com/@magmaprotocol/calc_dlmm/-/calc_dlmm-0.2.2.tgz#ff44d37a913eb96757efde53a3050674d6e15d27"
-  integrity sha512-yMZA+6k7B0L0Oy1kxn/3w0JlViO6qSgF53eySAuTI2lK75UMHMZ/2oM2qsJOwliAwGFgcMdvTGqziPWWzgQNtg==
+"@magmaprotocol/calc_dlmm@^0.2.3":
+  version "0.2.3"
+  resolved "https://registry.npmjs.org/@magmaprotocol/calc_dlmm/-/calc_dlmm-0.2.3.tgz#42b99b7f09835e5472478ceefa23e2faa99b6ee3"
+  integrity sha512-z/tRrl3G5pOY6dTjdetBTHXVnlASQ0cCng/d8VX5uAvrjmMeHHNHSxpkhdnLiZAe4UTM6/JmCQqcZXEdgyzPbQ==
 
 "@mysten/bcs@1.2.1":
   version "1.2.1"

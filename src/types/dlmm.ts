@@ -136,8 +136,10 @@ export type DlmmPoolInfo = {
   base_factor: number
   base_fee: number
   active_index: number;
+  real_bin_id: number;
   coinAmountA: string;
   coinAmountB: string;
+  index?: number;
 }
 
 export type DlmmAddLiquidityParams = {
@@ -261,10 +263,22 @@ export type MintByStrategyParams = {
   fixCoinA: boolean
   fixCoinB: boolean
   strategy: number // u8
-  min_bin: number // RealID. u32
-  max_bin: number // RealID. u32
-  active_bin: number // RealID. Used for calc slippage
-  slippage: number // base 10000
+  /**
+   * RealID. u32
+   */
+  min_bin: number
+  /**
+   * RealID. u32
+   */
+  max_bin: number
+  /**
+   * RealID. Used for calc slippage
+   */
+  active_bin: number
+  /**
+   * base 10000 =100%
+   */
+  slippage: number
 }
 
 export type RaiseByStrategyParams = {
