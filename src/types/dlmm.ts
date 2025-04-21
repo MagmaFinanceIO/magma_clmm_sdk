@@ -264,3 +264,23 @@ export type MintByStrategyParams = {
   active_bin: number // RealID. Used for calc slippage
   slippage: number // base 10000
 }
+
+export type RaiseByStrategyParams = {
+  pair: string
+  positionId: string
+  bin_step: number
+  coinTypeA: string
+  coinTypeB: string
+  amountATotal: number // u64
+  amountBTotal: number // u64
+  fixCoinA: boolean
+  fixCoinB: boolean
+  strategy: number // u8
+  min_bin: number // RealID. u32
+  max_bin: number // RealID. u32
+  active_bin: number // RealID. Used for calc slippage
+  slippage: number // base 10000
+
+  receiver: string
+  rewards_token: string[]
+}
