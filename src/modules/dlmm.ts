@@ -12,8 +12,6 @@ import {
   EventBin,
   CreatePairParams,
   FetchBinsParams,
-  MintAmountParams,
-  MintPercentParams,
   DLMMSwapParams,
   EventPositionLiquidity,
   GetPositionLiquidityParams,
@@ -22,7 +20,6 @@ import {
   FetchPairParams,
   EventPairParams,
   DlmmPoolInfo,
-  DlmmAddLiquidityParams,
   DlmmBurnPositionParams,
   DlmmShrinkPosition,
   DlmmCollectRewardParams,
@@ -397,7 +394,7 @@ export class DlmmModule implements IModule {
     ]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::raise_position_by_amounts`,
+      target: `${integrate.published_at}::${DlmmScript}::raise_by_strategy`,
       typeArguments,
       arguments: args,
     })
@@ -469,7 +466,7 @@ export class DlmmModule implements IModule {
     ]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::raise_position_by_amounts_reward${params.rewards_token.length}`,
+      target: `${integrate.published_at}::${DlmmScript}::raise_by_strategy_${params.rewards_token.length}`,
       typeArguments,
       arguments: args,
     })
