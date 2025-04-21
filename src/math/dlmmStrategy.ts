@@ -211,6 +211,83 @@ export function autoFillXByStrategy(
   }
 }
 
+function assignLeftAmountX(activeId: number, binStep: number, maxBinId: number, amountX: BN, strategyType: StrategyType): BinDisplay[] {
+  let weights: {
+    binId: number
+    weight: number
+  }[] = []
+  switch (strategyType) {
+    case StrategyType.Spot: {
+      weights = toWeightSpotBalanced(activeId, maxBinId)
+      break
+    }
+    case StrategyType.Curve: {
+      weights = toWeightDecendingOrder(activeId, maxBinId)
+      break
+    }
+    case StrategyType.BidAsk: {
+      weights = toWeightAscendingOrder(activeId, maxBinId)
+      break
+    }
+  }
+  const amounts = toAmountAskSide(activeId, binStep, amountX, weights)
+  return amounts.map((bin) => {
+    return {
+      binId: bin.binId,
+      amountX: bin.amount,
+      amountY: new BN(0),
+    }
+  })
+}
+
+function assignLeftAmountY(activeId: number, minBinId: number, amountY: BN, strategyType: StrategyType): BinDisplay[] {
+  let weights: {
+    binId: number
+    weight: number
+  }[] = []
+  switch (strategyType) {
+    case StrategyType.Spot: {
+      weights = toWeightSpotBalanced(minBinId, activeId)
+      break
+    }
+    case StrategyType.Curve: {
+      weights = toWeightAscendingOrder(minBinId, activeId)
+      break
+    }
+    case StrategyType.BidAsk: {
+      weights = toWeightDecendingOrder(minBinId, activeId)
+      break
+    }
+  }
+  const amounts = toAmountBidSide(activeId, amountY, weights)
+  return amounts.map((bin) => {
+    return {
+      binId: bin.binId,
+      amountX: new BN(0),
+      amountY: bin.amount,
+    }
+  })
+}
+
+function mergeBinDisplay(to: BinDisplay[], from: BinDisplay[]): BinDisplay[] {
+  const binMap = new Map<number, BinDisplay>()
+  for (const bin of to) {
+    binMap.set(bin.binId, bin)
+  }
+  for (const bin of from) {
+    const existingBin = binMap.get(bin.binId)
+    if (existingBin) {
+      existingBin.amountX = existingBin.amountX.add(bin.amountX)
+      existingBin.amountY = existingBin.amountY.add(bin.amountY)
+    } else {
+      binMap.set(bin.binId, bin)
+    }
+  }
+  return Array.from(binMap.values()).sort((a, b) => {
+    return a.binId - b.binId
+  })
+}
+
 /**
  * Given a strategy type and amounts of X and Y, returns the distribution of liquidity.
  * @param activeId The bin id of the active bin.
@@ -239,6 +316,8 @@ export function toAmountsBothSideByStrategy(
   strategyType: StrategyType
 ): BinDisplay[] {
   const isSingleSideX = amountY.isZero()
+
+  let res: BinDisplay[] = []
   switch (strategyType) {
     // case StrategyType.Spot: {
     //   if (activeId < minBinId || activeId > maxBinId) {
@@ -422,36 +501,58 @@ export function toAmountsBothSideByStrategy(
     // }
     case StrategyType.Spot: {
       const weights = toWeightSpotBalanced(minBinId, maxBinId)
-      return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      break
     }
     case StrategyType.Curve: {
       if (activeId < minBinId) {
         const weights = toWeightDecendingOrder(minBinId, maxBinId)
-        return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+        res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
       }
       if (activeId > maxBinId) {
         const weights = toWeightAscendingOrder(minBinId, maxBinId)
-        return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+        res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
       }
 
       const weights = toWeightCurve(minBinId, maxBinId, activeId)
-      return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+
+      break
     }
     case StrategyType.BidAsk: {
       if (activeId < minBinId) {
         const weights = toWeightAscendingOrder(minBinId, maxBinId)
-        return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+        res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
       }
       if (activeId > maxBinId) {
         const weights = toWeightDecendingOrder(minBinId, maxBinId)
-        return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+        res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
       }
 
       const weights = toWeightBidAsk(minBinId, maxBinId, activeId)
-      return toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      break
     }
 
     default:
       throw new Error(`Unsupported strategy type: ${strategyType}`)
   }
+
+  let amountXLeft = amountX
+  let amountYLeft = amountY
+  res.forEach((bin) => {
+    amountXLeft = amountXLeft.sub(bin.amountX)
+    amountYLeft = amountYLeft.sub(bin.amountY)
+  })
+
+  if (amountXLeft.gt(new BN(0))) {
+    const xAssigned = assignLeftAmountX(activeId, binStep, maxBinId, amountXLeft, strategyType)
+    res = mergeBinDisplay(res, xAssigned)
+  }
+  if (amountYLeft.gt(new BN(0))) {
+    const yAssigned = assignLeftAmountY(activeId, minBinId, amountYLeft, strategyType)
+    res = mergeBinDisplay(res, yAssigned)
+  }
+
+  return res
 }

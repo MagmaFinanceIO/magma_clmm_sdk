@@ -316,7 +316,7 @@ export class PoolModule implements IModule {
     } catch (e) {
       throw new ClmmpoolsError(`Failed tp [arse response from ${url}].`, RouterErrorCode.InvalidSwapCountUrl)
     }
-    const pools = json.data.pools
+    const { pools } = json.data
     if (!pools || pools.length === 0) {
       throw new ClmmpoolsError(`Failed tp [arse response from ${url}].`, PoolErrorCode.PoolsNotFound)
     }
