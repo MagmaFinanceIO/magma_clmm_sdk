@@ -104,6 +104,8 @@ export type EventBin = {
   rewarder_growth: number[] | string[] // vector<u256>
   distribution_growth: number | string // u256
   distribution_last_updated: number | string // u64
+
+  real_bin_id: number;
 }
 
 export type EventPositionLiquidity = {

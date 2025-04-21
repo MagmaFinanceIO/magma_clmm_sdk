@@ -703,8 +703,10 @@ export class DlmmModule implements IModule {
         res = bins
       }
     })
-
-    return res
+    res.forEach(bin => {
+      bin.real_bin_id = get_real_id(Number(bin.storage_id))
+    })
+    return res.sort((a, b) => a.real_bin_id - b.real_bin_id)
   }
 
   /**
