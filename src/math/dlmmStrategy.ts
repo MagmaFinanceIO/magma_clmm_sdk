@@ -212,6 +212,9 @@ export function autoFillXByStrategy(
 }
 
 function assignLeftAmountX(activeId: number, binStep: number, maxBinId: number, amountX: BN, strategyType: StrategyType): BinDisplay[] {
+  if (maxBinId < activeId) {
+    return []
+  }
   let weights: {
     binId: number
     weight: number
@@ -241,6 +244,9 @@ function assignLeftAmountX(activeId: number, binStep: number, maxBinId: number, 
 }
 
 function assignLeftAmountY(activeId: number, minBinId: number, amountY: BN, strategyType: StrategyType): BinDisplay[] {
+  if (minBinId > activeId) {
+    return []
+  }
   let weights: {
     binId: number
     weight: number

@@ -36,6 +36,7 @@ import {
   DlmmPosition,
   DlmmPositionInfo,
   MintByStrategyParams,
+  RaiseByStrategyParams,
 } from '../types/dlmm'
 import {
   CachedContent,
@@ -255,108 +256,143 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  // Create a position by percent
-  async mintPercent(params: MintPercentParams): Promise<Transaction> {
-    const tx = new Transaction()
-    tx.setSender(this.sdk.senderAddress)
+  // // Create a position by percent
+  // async mintPercent(params: MintPercentParams): Promise<Transaction> {
+  //   const tx = new Transaction()
+  //   tx.setSender(this.sdk.senderAddress)
 
-    const { dlmm_pool, integrate } = this.sdk.sdkOptions
-    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+  //   const { dlmm_pool, integrate } = this.sdk.sdkOptions
+  //   const dlmmConfig = getPackagerConfigs(dlmm_pool)
 
-    const typeArguments = [params.coinTypeA, params.coinTypeB]
+  //   const typeArguments = [params.coinTypeA, params.coinTypeB]
 
-    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
-    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
-    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+  //   const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+  //   const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+  //   const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
 
-    const args = [
-      tx.object(params.pair),
-      tx.object(dlmmConfig.factory),
-      primaryCoinAInputs.targetCoin,
-      primaryCoinBInputs.targetCoin,
-      tx.pure.u64(params.amountATotal),
-      tx.pure.u64(params.amountBTotal),
-      tx.pure.vector('u32', params.storageIds),
-      tx.pure.vector('u64', params.binsAPercent),
-      tx.pure.vector('u64', params.binsBPercent),
-      tx.pure.address(params.to),
-      tx.object(CLOCK_ADDRESS),
-    ]
+  //   const args = [
+  //     tx.object(params.pair),
+  //     tx.object(dlmmConfig.factory),
+  //     primaryCoinAInputs.targetCoin,
+  //     primaryCoinBInputs.targetCoin,
+  //     tx.pure.u64(params.amountATotal),
+  //     tx.pure.u64(params.amountBTotal),
+  //     tx.pure.vector('u32', params.storageIds),
+  //     tx.pure.vector('u64', params.binsAPercent),
+  //     tx.pure.vector('u64', params.binsBPercent),
+  //     tx.pure.address(params.to),
+  //     tx.object(CLOCK_ADDRESS),
+  //   ]
 
-    tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::mint_percent`,
-      typeArguments,
-      arguments: args,
-    })
-    return tx
-  }
+  //   tx.moveCall({
+  //     target: `${integrate.published_at}::${DlmmScript}::mint_percent`,
+  //     typeArguments,
+  //     arguments: args,
+  //   })
+  //   return tx
+  // }
 
-  // Create a position by amount
-  async createPositionByAmount(params: MintAmountParams): Promise<Transaction> {
-    const tx = new Transaction()
-    tx.setSender(this.sdk.senderAddress)
-    const { dlmm_pool, integrate } = this.sdk.sdkOptions
-    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+  // // Create a position by amount
+  // async createPositionByAmount(params: MintAmountParams): Promise<Transaction> {
+  //   const tx = new Transaction()
+  //   tx.setSender(this.sdk.senderAddress)
+  //   const { dlmm_pool, integrate } = this.sdk.sdkOptions
+  //   const dlmmConfig = getPackagerConfigs(dlmm_pool)
 
-    const typeArguments = [params.coinTypeA, params.coinTypeB]
+  //   const typeArguments = [params.coinTypeA, params.coinTypeB]
 
-    const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
-    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
-    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+  //   const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+  //   const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+  //   const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
 
-    const args = [
-      tx.object(params.pair),
-      tx.object(dlmmConfig.factory),
-      primaryCoinAInputs.targetCoin,
-      primaryCoinBInputs.targetCoin,
-      tx.pure.vector('u32', params.storageIds),
-      tx.pure.vector('u64', params.amountsA),
-      tx.pure.vector('u64', params.amountsB),
-      tx.pure.address(params.to),
-      tx.object(CLOCK_ADDRESS),
-    ]
+  //   const args = [
+  //     tx.object(params.pair),
+  //     tx.object(dlmmConfig.factory),
+  //     primaryCoinAInputs.targetCoin,
+  //     primaryCoinBInputs.targetCoin,
+  //     tx.pure.vector('u32', params.storageIds),
+  //     tx.pure.vector('u64', params.amountsA),
+  //     tx.pure.vector('u64', params.amountsB),
+  //     tx.pure.address(params.to),
+  //     tx.object(CLOCK_ADDRESS),
+  //   ]
 
-    tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::mint_amounts`,
-      typeArguments,
-      arguments: args,
-    })
-    return tx
-  }
+  //   tx.moveCall({
+  //     target: `${integrate.published_at}::${DlmmScript}::mint_amounts`,
+  //     typeArguments,
+  //     arguments: args,
+  //   })
+  //   return tx
+  // }
 
-  async addLiquidity(params: DlmmAddLiquidityParams): Promise<Transaction> {
+  async addLiquidityByStrategy(params: RaiseByStrategyParams): Promise<Transaction> {
     if (params.rewards_token.length === 0) {
       return this._raisePositionByAmounts(params)
     }
     return this._raisePositionByAmountsReward(params)
   }
 
-  private async _raisePositionByAmounts(params: DlmmAddLiquidityParams): Promise<Transaction> {
+  private async _raisePositionByAmounts(params: RaiseByStrategyParams): Promise<Transaction> {
     const tx = new Transaction()
+    const slippage = new Decimal(params.slippage)
+    const lower_slippage = new Decimal(1).sub(slippage.div(new Decimal(10000)))
+    const upper_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
     tx.setSender(this.sdk.senderAddress)
 
     const { dlmm_pool, integrate } = this.sdk.sdkOptions
     const dlmmConfig = getPackagerConfigs(dlmm_pool)
 
-    const typeArguments = [params.coin_a, params.coin_b]
+    const price = get_price_x128_from_real_id(params.active_bin, params.bin_step)
+    const min_price = new Decimal(price).mul(lower_slippage)
+    const max_price = new Decimal(price).mul(upper_slippage)
+
+    const active_min = get_storage_id_from_real_id(get_real_id_from_price_x128(min_price.toDecimalPlaces(0).toString(), params.bin_step))
+    const active_max = get_storage_id_from_real_id(get_real_id_from_price_x128(max_price.toDecimalPlaces(0).toString(), params.bin_step))
+
+    const typeArguments = [params.coinTypeA, params.coinTypeB]
 
     const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    let amount_min = 0
+    let amount_max = 0
+    let primaryCoinAInputs
+    let primaryCoinBInputs
+    if (params.fixCoinA && params.fixCoinB) {
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+    } else if (params.fixCoinA) {
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+      amount_min = new Decimal(params.amountBTotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountBTotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
+    } else if (params.fixCoinB) {
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+      amount_min = new Decimal(params.amountATotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountATotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeA, false, true)
+    }
 
-    const amountATotal = params.amounts_a.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
-    const amountBTotal = params.amounts_b.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
-
-    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountATotal), params.coin_a, false, true)
-    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountBTotal), params.coin_b, false, true)
+    if (params.fixCoinA && params.fixCoinB) {
+    } else if (params.fixCoinA) {
+      params.amountBTotal = 0
+    } else if (params.fixCoinB) {
+      params.amountATotal = 0
+    }
 
     const args = [
-      tx.object(params.pool_id),
+      tx.object(params.pair),
       tx.object(dlmmConfig.factory),
-      tx.object(params.position_id),
-      primaryCoinAInputs.targetCoin,
-      primaryCoinBInputs.targetCoin,
-      tx.pure.vector('u64', params.amounts_a),
-      tx.pure.vector('u64', params.amounts_b),
-      tx.pure.address(params.receiver),
+      tx.object(params.positionId),
+      primaryCoinAInputs!.targetCoin,
+      primaryCoinBInputs!.targetCoin,
+      tx.pure.bool(params.fixCoinA),
+      tx.pure.u64(params.amountATotal),
+      tx.pure.bool(params.fixCoinB),
+      tx.pure.u64(params.amountBTotal),
+      tx.pure.u8(params.strategy),
+      tx.pure.u32(active_min),
+      tx.pure.u32(active_max),
+      tx.pure.u64(amount_min),
+      tx.pure.u64(amount_max),
       tx.object(CLOCK_ADDRESS),
     ]
 
@@ -368,34 +404,67 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  private async _raisePositionByAmountsReward(params: DlmmAddLiquidityParams): Promise<Transaction> {
+  private async _raisePositionByAmountsReward(params: RaiseByStrategyParams): Promise<Transaction> {
     const tx = new Transaction()
+    const slippage = new Decimal(params.slippage)
+    const lower_slippage = new Decimal(1).sub(slippage.div(new Decimal(10000)))
+    const upper_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
     tx.setSender(this.sdk.senderAddress)
 
-    const { dlmm_pool, integrate, clmm_pool } = this.sdk.sdkOptions
+    const { dlmm_pool, integrate } = this.sdk.sdkOptions
     const dlmmConfig = getPackagerConfigs(dlmm_pool)
-    const clmmConfigs = getPackagerConfigs(clmm_pool)
 
-    const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
+    const price = get_price_x128_from_real_id(params.active_bin, params.bin_step)
+    const min_price = new Decimal(price).mul(lower_slippage)
+    const max_price = new Decimal(price).mul(upper_slippage)
+
+    const active_min = get_storage_id_from_real_id(get_real_id_from_price_x128(min_price.toDecimalPlaces(0).toString(), params.bin_step))
+    const active_max = get_storage_id_from_real_id(get_real_id_from_price_x128(max_price.toDecimalPlaces(0).toString(), params.bin_step))
+
+    const typeArguments = [params.coinTypeA, params.coinTypeB, ...params.rewards_token]
 
     const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
+    let amount_min = 0
+    let amount_max = 0
+    let primaryCoinAInputs
+    let primaryCoinBInputs
+    if (params.fixCoinA && params.fixCoinB) {
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+    } else if (params.fixCoinA) {
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountATotal), params.coinTypeA, false, true)
+      amount_min = new Decimal(params.amountBTotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountBTotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeB, false, true)
+    } else if (params.fixCoinB) {
+      primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(params.amountBTotal), params.coinTypeB, false, true)
+      amount_min = new Decimal(params.amountATotal).mul(lower_slippage).toDecimalPlaces(0).toNumber()
+      amount_max = new Decimal(params.amountATotal).mul(upper_slippage).toDecimalPlaces(0).toNumber()
+      primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amount_max), params.coinTypeA, false, true)
+    }
 
-    const amountATotal = params.amounts_a.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
-    const amountBTotal = params.amounts_b.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
-
-    const primaryCoinAInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountATotal), params.coin_a, false, true)
-    const primaryCoinBInputs = TransactionUtil.buildCoinForAmount(tx, allCoins, BigInt(amountBTotal), params.coin_b, false, true)
+    if (params.fixCoinA && params.fixCoinB) {
+    } else if (params.fixCoinA) {
+      params.amountBTotal = 0
+    } else if (params.fixCoinB) {
+      params.amountATotal = 0
+    }
 
     const args = [
-      tx.object(params.pool_id),
+      tx.object(params.pair),
       tx.object(dlmmConfig.factory),
-      tx.object(clmmConfigs.global_vault_id),
-      tx.object(params.position_id),
-      primaryCoinAInputs.targetCoin,
-      primaryCoinBInputs.targetCoin,
-      tx.pure.vector('u64', params.amounts_a),
-      tx.pure.vector('u64', params.amounts_b),
-      tx.pure.address(params.receiver),
+      tx.object(params.positionId),
+      primaryCoinAInputs!.targetCoin,
+      primaryCoinBInputs!.targetCoin,
+      tx.pure.bool(params.fixCoinA),
+      tx.pure.u64(params.amountATotal),
+      tx.pure.bool(params.fixCoinB),
+      tx.pure.u64(params.amountBTotal),
+      tx.pure.u8(params.strategy),
+      tx.pure.u32(active_min),
+      tx.pure.u32(active_max),
+      tx.pure.u64(amount_min),
+      tx.pure.u64(amount_max),
       tx.object(CLOCK_ADDRESS),
     ]
 
