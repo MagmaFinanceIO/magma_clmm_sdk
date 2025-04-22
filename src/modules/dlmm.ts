@@ -860,9 +860,9 @@ export class DlmmModule implements IModule {
       })
     }
 
-    const positionsLiquidity = await this.getPositionLiquidity(positionLiquidityParams)
+    const positionsLiquidity = await this.getPositionsLiquidityLimit(positionLiquidityParams)
     const positionsRewards = await this.getEarnedRewards(dlmmRewardsParams)
-    const positionsFees = await this.getEarnedFees(dlmmCollectFeeParams)
+    const positionsFees = await this.getEarnedFeesLimit(dlmmCollectFeeParams)
 
     const out = []
     for (let i = 0; i < allPosition.length; i++) {
@@ -925,7 +925,23 @@ export class DlmmModule implements IModule {
     return `${this._sdk.sdkOptions.dlmm_pool.package_id}::dlmm_position::Position`
   }
 
-  async getPositionLiquidity(params: GetPositionLiquidityParams[]): Promise<EventPositionLiquidity[]> {
+  async getPositionsLiquidityLimit(params: GetPositionLiquidityParams[]): Promise<EventPositionLiquidity[]> {
+    const out: EventPositionLiquidity[] = []
+    const limit = 2
+
+    for (let i = 0; i < params.length; i += limit) {
+      if (i + limit >= params.length) {
+        const res = await this.getPositionsLiquidity(params.slice(i, params.length))
+        out.push(...res)
+        return out
+      }
+      const res = await this.getPositionsLiquidity(params.slice(i, i + limit))
+      out.push(...res)
+    }
+    return out
+  }
+
+  private async getPositionsLiquidity(params: GetPositionLiquidityParams[]): Promise<EventPositionLiquidity[]> {
     let tx = new Transaction()
     for (const param of params) {
       tx = await this._getPositionLiquidity(param, tx)
@@ -956,7 +972,7 @@ export class DlmmModule implements IModule {
     })
 
     if (simulateRes.error != null) {
-      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`fetchPositionLiquidity error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
     const out: EventPositionLiquidity[] = []
@@ -1023,7 +1039,24 @@ export class DlmmModule implements IModule {
     return out
   }
 
-  async getEarnedFees(params: DlmmCollectFeeParams[]): Promise<DlmmEventEarnedFees[]> {
+  async getEarnedFeesLimit(params: DlmmCollectFeeParams[]): Promise<DlmmEventEarnedFees[]> {
+    const out: DlmmEventEarnedFees[] = []
+    const limit = 2
+
+    for (let i = 0; i < params.length; i += limit) {
+      if (i + limit >= params.length) {
+        const res = await this.getEarnedFees(params.slice(i, params.length))
+        out.push(...res)
+        return out
+      }
+      const res = await this.getEarnedFees(params.slice(i, i + limit))
+      out.push(...res)
+    }
+    return out
+  }
+
+  private async getEarnedFees(params: DlmmCollectFeeParams[]): Promise<DlmmEventEarnedFees[]> {
+    console.log('############ params: ', params)
     let tx = new Transaction()
     for (const param of params) {
       tx = await this._getEarnedFees(param, tx)
@@ -1137,6 +1170,7 @@ export class DlmmModule implements IModule {
 
   // return pool_id => reward_tokens
   async getPairRewarders(params: GetPairRewarderParams[]): Promise<Map<string, string[]>> {
+    params = [params[0]]
     let tx = new Transaction()
     for (const param of params) {
       tx = await this._getPairRewarders(param, tx)
@@ -1169,7 +1203,7 @@ export class DlmmModule implements IModule {
 
     const out = new Map<string, string[]>()
     if (simulateRes.error != null) {
-      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`getPairReward error code: ${simulateRes.error ?? 'unknown error'}`)
     }
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventPairRewardTypes`) {
