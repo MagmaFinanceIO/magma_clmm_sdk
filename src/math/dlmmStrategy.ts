@@ -514,14 +514,13 @@ export function toAmountsBothSideByStrategy(
       if (activeId < minBinId) {
         const weights = toWeightDecendingOrder(minBinId, maxBinId)
         res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
-      }
-      if (activeId > maxBinId) {
+      } else if (activeId > maxBinId) {
         const weights = toWeightAscendingOrder(minBinId, maxBinId)
         res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      } else {
+        const weights = toWeightCurve(minBinId, maxBinId, activeId)
+        res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
       }
-
-      const weights = toWeightCurve(minBinId, maxBinId, activeId)
-      res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
 
       break
     }
@@ -529,14 +528,14 @@ export function toAmountsBothSideByStrategy(
       if (activeId < minBinId) {
         const weights = toWeightAscendingOrder(minBinId, maxBinId)
         res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
-      }
-      if (activeId > maxBinId) {
+      } else if (activeId > maxBinId) {
         const weights = toWeightDecendingOrder(minBinId, maxBinId)
+        res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
+      } else {
+        const weights = toWeightBidAsk(minBinId, maxBinId, activeId)
         res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
       }
 
-      const weights = toWeightBidAsk(minBinId, maxBinId, activeId)
-      res = toAmountBothSide(activeId, binStep, amountX, amountY, amountXInActiveBin, amountYInActiveBin, weights)
       break
     }
 
