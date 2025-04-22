@@ -105,10 +105,11 @@ export type EventBin = {
   distribution_growth: number | string // u256
   distribution_last_updated: number | string // u64
 
-  real_bin_id: number;
+  real_bin_id: number
 }
 
 export type EventPositionLiquidity = {
+  position_id: string
   shares: number | string // u64
   liquidity: number | string // u256
   x_equivalent: number | string // u64
@@ -137,11 +138,11 @@ export type DlmmPoolInfo = {
   coin_b: string
   base_factor: number
   base_fee: number
-  active_index: number;
-  real_bin_id: number;
-  coinAmountA: string;
-  coinAmountB: string;
-  index?: number;
+  active_index: number
+  real_bin_id: number
+  coinAmountA: string
+  coinAmountB: string
+  index?: number
 }
 
 export type DlmmAddLiquidityParams = {

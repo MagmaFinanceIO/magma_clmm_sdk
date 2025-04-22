@@ -28,6 +28,7 @@ const SDKConfig = {
   },
   dlmmConfig: {
     factory: '',
+    rewarder_global_vault: '',
   },
 }
 

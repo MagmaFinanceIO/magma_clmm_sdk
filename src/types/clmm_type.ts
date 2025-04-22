@@ -329,6 +329,7 @@ export type ClmmConfig = {
 
 export type DlmmConfig = {
   factory: SuiObjectIdType
+  rewarder_global_vault: SuiObjectIdType
 }
 
 /**
