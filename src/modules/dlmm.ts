@@ -1031,10 +1031,10 @@ export class DlmmModule implements IModule {
       throw new Error(`fetchPairRewards error code: ${simulateRes.error ?? 'unknown error'}`)
     }
     simulateRes.events?.forEach((item: any) => {
-      if (extractStructTagFromType(item.type).name === `EventPositionLiquidity`) {
+      if (extractStructTagFromType(item.type).name === `EventEarnedFees`) {
         out.position_id = item.parsedJson.position_id
-        out.x = item.parsedJson.x
-        out.y = item.parsedJson.y
+        out.x = item.parsedJson.x.name
+        out.y = item.parsedJson.y.name
         out.fee_x = item.parsedJson.fee_x
         out.fee_y = item.parsedJson.fee_y
       }
@@ -1075,17 +1075,17 @@ export class DlmmModule implements IModule {
       throw new Error(`getEarnedRewards error code: ${simulateRes.error ?? 'unknown error'}`)
     }
     simulateRes.events?.forEach((item: any) => {
-      if (extractStructTagFromType(item.type).name === `DlmmEventEarnedRewards`) {
+      if (extractStructTagFromType(item.type).name === `EventEarnedRewards`) {
         out.position_id = item.parsedJson.position_id
-        out.reward = [item.parsedJson.reward]
+        out.reward = [item.parsedJson.reward.name]
         out.amount = [item.parsedJson.amount]
-      } else if (extractStructTagFromType(item.type).name === `DlmmEventEarnedRewards2`) {
+      } else if (extractStructTagFromType(item.type).name === `EventEarnedRewards2`) {
         out.position_id = item.parsedJson.position_id
-        out.reward = [item.parsedJson.reward1, item.parsedJson.reward2]
+        out.reward = [item.parsedJson.reward1.name, item.parsedJson.reward2.name]
         out.amount = [item.parsedJson.amount1, item.parsedJson.amount2]
       } else if (extractStructTagFromType(item.type).name === `EventEarnedRewards3`) {
         out.position_id = item.parsedJson.position_id
-        out.reward = [item.parsedJson.reward1, item.parsedJson.reward2, item.parsedJson.reward3]
+        out.reward = [item.parsedJson.reward1.name, item.parsedJson.reward2.name, item.parsedJson.reward3.name]
         out.amount = [item.parsedJson.amount1, item.parsedJson.amount2, item.parsedJson.amount3]
       }
     })
