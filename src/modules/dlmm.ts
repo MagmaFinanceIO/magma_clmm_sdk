@@ -111,7 +111,7 @@ export class DlmmModule implements IModule {
     })
 
     if (simulateRes.error != null) {
-      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`fetchPairParams error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
     let res: EventPairParams = {
@@ -533,7 +533,7 @@ export class DlmmModule implements IModule {
     let tx = new Transaction()
     tx = await this.collectFees(params)
     if (params.rewards_token.length > 0) {
-      tx = await this.collectReward(params)
+      tx = await this.collectReward(params, tx)
     }
     return tx
   }
@@ -694,7 +694,7 @@ export class DlmmModule implements IModule {
     })
 
     if (simulateRes.error != null) {
-      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`swap code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
     let res: EventBin[] = []
@@ -799,7 +799,7 @@ export class DlmmModule implements IModule {
         const cacheKey = `${position.pos_object_id}_getPositionList`
         this.updateCache(cacheKey, position, cacheTime24h)
         if (hasAssignPoolIds) {
-          if (assignPoolIds.includes(position.pool)) {
+          if (assignPoolIds.includes(position.pos_object_id)) {
             allPosition.push(position)
           }
         } else {
@@ -1013,7 +1013,7 @@ export class DlmmModule implements IModule {
     })
 
     if (simulateRes.error != null) {
-      throw new Error(`fetchBins error code: ${simulateRes.error ?? 'unknown error'}`)
+      throw new Error(`getPairLiquidity error code: ${simulateRes.error ?? 'unknown error'}`)
     }
 
     const out: EventPairLiquidity = {
