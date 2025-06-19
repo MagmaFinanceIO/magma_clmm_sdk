@@ -12,29 +12,29 @@ import {
   EventBin,
   CreatePairParams,
   FetchBinsParams,
-  DLMMSwapParams,
+  ALMMSwapParams,
   EventPositionLiquidity,
   GetPositionLiquidityParams,
   EventPairLiquidity,
   GetPairLiquidityParams,
   FetchPairParams,
   EventPairParams,
-  DlmmPoolInfo,
-  DlmmBurnPositionParams,
-  DlmmShrinkPosition,
-  DlmmCollectRewardParams,
-  DlmmCollectFeeParams,
-  DlmmEventEarnedFees,
-  DlmmRewardsParams,
-  DlmmEventEarnedRewards,
+  AlmmPoolInfo,
+  AlmmBurnPositionParams,
+  AlmmShrinkPosition,
+  AlmmCollectRewardParams,
+  AlmmCollectFeeParams,
+  AlmmEventEarnedFees,
+  AlmmRewardsParams,
+  AlmmEventEarnedRewards,
   GetPairRewarderParams,
-  DlmmEventPairRewardTypes,
-  DlmmCreatePairAddLiquidityParams,
-  DlmmPosition,
-  DlmmPositionInfo,
+  AlmmEventPairRewardTypes,
+  AlmmCreatePairAddLiquidityParams,
+  AlmmPosition,
+  AlmmPositionInfo,
   MintByStrategyParams,
   RaiseByStrategyParams,
-} from '../types/dlmm'
+} from '../types/almm'
 import {
   CachedContent,
   cacheTime24h,
@@ -46,12 +46,12 @@ import {
   getObjectType,
   TransactionUtil,
 } from '../utils'
-import { CLOCK_ADDRESS, DlmmScript, getPackagerConfigs, SuiResource } from '../types'
+import { CLOCK_ADDRESS, AlmmScript, getPackagerConfigs, SuiResource } from '../types'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
 
-export class DlmmModule implements IModule {
+export class AlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
 
   private readonly _cache: Record<string, CachedContent> = {}
@@ -64,17 +64,27 @@ export class DlmmModule implements IModule {
     return this._sdk
   }
 
-  async getPoolInfo(pools: string[]): Promise<DlmmPoolInfo[]> {
+  async getPoolInfo(pools: string[]): Promise<AlmmPoolInfo[]> {
+
+    const cachePoolList: AlmmPoolInfo[] = [];
+    pools = pools.filter(poolID => {
+      const cacheData = this.getCache<AlmmPoolInfo>(`${poolID}_getPoolObject`, false);
+      if (cacheData !== undefined) {
+        cachePoolList.push(cacheData);
+        return false
+      }
+      return true
+    })
     const objects = await this._sdk.fullClient.batchGetObjects(pools, { showContent: true })
 
-    const poolList: DlmmPoolInfo[] = []
+    const poolList: AlmmPoolInfo[] = [];
     objects.forEach((obj) => {
       if (obj.error != null || obj.data?.content?.dataType !== 'moveObject') {
         throw new ClmmpoolsError(`Invalid objects. error: ${obj.error}`, TypesErrorCode.InvalidType)
       }
 
-      const fields = getObjectFields(obj)
-      poolList.push({
+      const fields = getObjectFields(obj);
+      const poolInfo: AlmmPoolInfo = {
         pool_id: fields.id.id,
         bin_step: fields.bin_step,
         coin_a: fields.x.fields.name,
@@ -85,10 +95,13 @@ export class DlmmModule implements IModule {
         real_bin_id: get_real_id(fields.params.fields.active_index),
         coinAmountA: fields.reserve_x,
         coinAmountB: fields.reserve_y,
-      })
+      }
+      poolList.push(poolInfo)
+      this.updateCache(`${fields.id.id}_getPoolObject`, poolInfo, cacheTime24h)
     })
 
-    return poolList
+
+    return [...cachePoolList, ...poolList]
   }
 
   // eg: fetch pool active_index
@@ -100,7 +113,7 @@ export class DlmmModule implements IModule {
     const args = [tx.object(params.pair)]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::fetch_pair_params`,
+      target: `${integrate.published_at}::${AlmmScript}::fetch_pair_params`,
       arguments: args,
       typeArguments,
     })
@@ -148,13 +161,13 @@ export class DlmmModule implements IModule {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { clmm_pool, dlmm_pool, integrate } = this.sdk.sdkOptions
+    const { clmm_pool, almm_pool, integrate } = this.sdk.sdkOptions
     const { global_config_id } = getPackagerConfigs(clmm_pool)
-    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+    const almmConfig = getPackagerConfigs(almm_pool)
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
     const args = [
-      tx.object(dlmmConfig.factory),
+      tx.object(almmConfig.factory),
       tx.object(global_config_id),
       tx.pure.u64(params.base_fee),
       tx.pure.u16(params.bin_step),
@@ -162,7 +175,7 @@ export class DlmmModule implements IModule {
     ]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::create_pair`,
+      target: `${integrate.published_at}::${AlmmScript}::create_pair`,
       typeArguments,
       arguments: args,
     })
@@ -189,8 +202,8 @@ export class DlmmModule implements IModule {
 
     tx.setSender(this.sdk.senderAddress)
 
-    const { dlmm_pool, integrate } = this.sdk.sdkOptions
-    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+    const { almm_pool, integrate } = this.sdk.sdkOptions
+    const almmConfig = getPackagerConfigs(almm_pool)
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
@@ -231,7 +244,7 @@ export class DlmmModule implements IModule {
 
     const args = [
       tx.object(params.pair),
-      tx.object(dlmmConfig.factory),
+      tx.object(almmConfig.factory),
       primaryCoinAInputs!.targetCoin,
       primaryCoinBInputs!.targetCoin,
       tx.pure.bool(params.fixCoinA),
@@ -249,7 +262,7 @@ export class DlmmModule implements IModule {
     ]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::mint_by_strategy`,
+      target: `${integrate.published_at}::${AlmmScript}::mint_by_strategy`,
       typeArguments,
       arguments: args,
     })
@@ -261,8 +274,8 @@ export class DlmmModule implements IModule {
   //   const tx = new Transaction()
   //   tx.setSender(this.sdk.senderAddress)
 
-  //   const { dlmm_pool, integrate } = this.sdk.sdkOptions
-  //   const dlmmConfig = getPackagerConfigs(dlmm_pool)
+  //   const { almm_pool, integrate } = this.sdk.sdkOptions
+  //   const almmConfig = getPackagerConfigs(almm_pool)
 
   //   const typeArguments = [params.coinTypeA, params.coinTypeB]
 
@@ -272,7 +285,7 @@ export class DlmmModule implements IModule {
 
   //   const args = [
   //     tx.object(params.pair),
-  //     tx.object(dlmmConfig.factory),
+  //     tx.object(almmConfig.factory),
   //     primaryCoinAInputs.targetCoin,
   //     primaryCoinBInputs.targetCoin,
   //     tx.pure.u64(params.amountATotal),
@@ -285,7 +298,7 @@ export class DlmmModule implements IModule {
   //   ]
 
   //   tx.moveCall({
-  //     target: `${integrate.published_at}::${DlmmScript}::mint_percent`,
+  //     target: `${integrate.published_at}::${AlmmScript}::mint_percent`,
   //     typeArguments,
   //     arguments: args,
   //   })
@@ -296,8 +309,8 @@ export class DlmmModule implements IModule {
   // async createPositionByAmount(params: MintAmountParams): Promise<Transaction> {
   //   const tx = new Transaction()
   //   tx.setSender(this.sdk.senderAddress)
-  //   const { dlmm_pool, integrate } = this.sdk.sdkOptions
-  //   const dlmmConfig = getPackagerConfigs(dlmm_pool)
+  //   const { almm_pool, integrate } = this.sdk.sdkOptions
+  //   const almmConfig = getPackagerConfigs(almm_pool)
 
   //   const typeArguments = [params.coinTypeA, params.coinTypeB]
 
@@ -307,7 +320,7 @@ export class DlmmModule implements IModule {
 
   //   const args = [
   //     tx.object(params.pair),
-  //     tx.object(dlmmConfig.factory),
+  //     tx.object(almmConfig.factory),
   //     primaryCoinAInputs.targetCoin,
   //     primaryCoinBInputs.targetCoin,
   //     tx.pure.vector('u32', params.storageIds),
@@ -318,7 +331,7 @@ export class DlmmModule implements IModule {
   //   ]
 
   //   tx.moveCall({
-  //     target: `${integrate.published_at}::${DlmmScript}::mint_amounts`,
+  //     target: `${integrate.published_at}::${AlmmScript}::mint_amounts`,
   //     typeArguments,
   //     arguments: args,
   //   })
@@ -339,8 +352,8 @@ export class DlmmModule implements IModule {
     const upper_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
     tx.setSender(this.sdk.senderAddress)
 
-    const { dlmm_pool, integrate } = this.sdk.sdkOptions
-    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+    const { almm_pool, integrate } = this.sdk.sdkOptions
+    const almmConfig = getPackagerConfigs(almm_pool)
 
     const price = get_price_x128_from_real_id(params.active_bin, params.bin_step)
     const min_price = new Decimal(price).mul(lower_slippage)
@@ -380,7 +393,7 @@ export class DlmmModule implements IModule {
 
     const args = [
       tx.object(params.pair),
-      tx.object(dlmmConfig.factory),
+      tx.object(almmConfig.factory),
       tx.object(params.positionId),
       primaryCoinAInputs!.targetCoin,
       primaryCoinBInputs!.targetCoin,
@@ -397,7 +410,7 @@ export class DlmmModule implements IModule {
     ]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::raise_by_strategy`,
+      target: `${integrate.published_at}::${AlmmScript}::raise_by_strategy`,
       typeArguments,
       arguments: args,
     })
@@ -411,8 +424,8 @@ export class DlmmModule implements IModule {
     const upper_slippage = new Decimal(1).plus(slippage.div(new Decimal(10000)))
     tx.setSender(this.sdk.senderAddress)
 
-    const { dlmm_pool, integrate } = this.sdk.sdkOptions
-    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+    const { almm_pool, integrate } = this.sdk.sdkOptions
+    const almmConfig = getPackagerConfigs(almm_pool)
 
     const price = get_price_x128_from_real_id(params.active_bin, params.bin_step)
     const min_price = new Decimal(price).mul(lower_slippage)
@@ -452,8 +465,8 @@ export class DlmmModule implements IModule {
 
     const args = [
       tx.object(params.pair),
-      tx.object(dlmmConfig.factory),
-      tx.object(dlmm_pool.config!.rewarder_global_vault),
+      tx.object(almmConfig.factory),
+      tx.object(almm_pool.config!.rewarder_global_vault),
       tx.object(params.positionId),
       primaryCoinAInputs!.targetCoin,
       primaryCoinBInputs!.targetCoin,
@@ -470,14 +483,14 @@ export class DlmmModule implements IModule {
     ]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::raise_by_strategy_${params.rewards_token.length}`,
+      target: `${integrate.published_at}::${AlmmScript}::raise_by_strategy_${params.rewards_token.length}`,
       typeArguments,
       arguments: args,
     })
     return tx
   }
 
-  async burnPosition(params: DlmmBurnPositionParams): Promise<Transaction> {
+  async burnPosition(params: AlmmBurnPositionParams): Promise<Transaction> {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
@@ -485,11 +498,11 @@ export class DlmmModule implements IModule {
     const clmmConfigs = getPackagerConfigs(clmm_pool)
     const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
     let args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
-    let target = `${integrate.published_at}::${DlmmScript}::burn_position`
+    let target = `${integrate.published_at}::${AlmmScript}::burn_position`
 
     if (params.rewards_token.length > 0) {
       args = [tx.object(params.pool_id), tx.object(clmmConfigs.global_vault_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
-      target = `${integrate.published_at}::${DlmmScript}::burn_position_reward${params.rewards_token.length}`
+      target = `${integrate.published_at}::${AlmmScript}::burn_position_reward${params.rewards_token.length}`
     }
 
     tx.moveCall({
@@ -500,7 +513,7 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async shrinkPosition(params: DlmmShrinkPosition): Promise<Transaction> {
+  async shrinkPosition(params: AlmmShrinkPosition): Promise<Transaction> {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
@@ -508,7 +521,7 @@ export class DlmmModule implements IModule {
     const clmmConfigs = getPackagerConfigs(clmm_pool)
     const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
     let args = [tx.object(params.pool_id), tx.object(params.position_id), tx.pure.u64(params.delta_percentage), tx.object(CLOCK_ADDRESS)]
-    let target = `${integrate.published_at}::${DlmmScript}::shrink_position`
+    let target = `${integrate.published_at}::${AlmmScript}::shrink_position`
 
     if (params.rewards_token.length > 0) {
       args = [
@@ -518,7 +531,7 @@ export class DlmmModule implements IModule {
         tx.pure.u64(params.delta_percentage),
         tx.object(CLOCK_ADDRESS),
       ]
-      target = `${integrate.published_at}::${DlmmScript}::shrink_position_reward${params.rewards_token.length}`
+      target = `${integrate.published_at}::${AlmmScript}::shrink_position_reward${params.rewards_token.length}`
     }
 
     tx.moveCall({
@@ -529,7 +542,7 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async collectFeeAndReward(params: DlmmCollectRewardParams & DlmmCollectFeeParams): Promise<Transaction> {
+  async collectFeeAndReward(params: AlmmCollectRewardParams & AlmmCollectFeeParams): Promise<Transaction> {
     let tx = new Transaction()
     tx = await this.collectFees(params)
     if (params.rewards_token.length > 0) {
@@ -538,7 +551,7 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async collectReward(params: DlmmCollectRewardParams, transaction?: Transaction): Promise<Transaction> {
+  async collectReward(params: AlmmCollectRewardParams, transaction?: Transaction): Promise<Transaction> {
     const tx = transaction || new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
@@ -551,10 +564,10 @@ export class DlmmModule implements IModule {
       tx.object(params.position_id),
       tx.object(CLOCK_ADDRESS),
     ]
-    let target = `${integrate.published_at}::${DlmmScript}::collect_reward`
+    let target = `${integrate.published_at}::${AlmmScript}::collect_reward`
 
     if (params.rewards_token.length > 1) {
-      target = `${integrate.published_at}::${DlmmScript}::collect_reward${params.rewards_token.length}`
+      target = `${integrate.published_at}::${AlmmScript}::collect_reward${params.rewards_token.length}`
     }
 
     tx.moveCall({
@@ -565,14 +578,14 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async collectFees(params: DlmmCollectFeeParams, transaction?: Transaction): Promise<Transaction> {
+  async collectFees(params: AlmmCollectFeeParams, transaction?: Transaction): Promise<Transaction> {
     const tx = transaction || new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
     const { integrate } = this.sdk.sdkOptions
     const typeArguments = [params.coin_a, params.coin_b]
     const args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
-    const target = `${integrate.published_at}::${DlmmScript}::collect_fees`
+    const target = `${integrate.published_at}::${AlmmScript}::collect_fees`
 
     tx.moveCall({
       target,
@@ -582,13 +595,13 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async createPairAddLiquidity(params: DlmmCreatePairAddLiquidityParams): Promise<Transaction> {
+  async createPairAddLiquidity(params: AlmmCreatePairAddLiquidityParams): Promise<Transaction> {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { clmm_pool, dlmm_pool, integrate } = this.sdk.sdkOptions
+    const { clmm_pool, almm_pool, integrate } = this.sdk.sdkOptions
     const { global_config_id } = getPackagerConfigs(clmm_pool)
-    const dlmmConfig = getPackagerConfigs(dlmm_pool)
+    const almmConfig = getPackagerConfigs(almm_pool)
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
     const allCoins = await this._sdk.getOwnerCoinAssets(this._sdk.senderAddress)
@@ -604,7 +617,7 @@ export class DlmmModule implements IModule {
       storageIds.push(get_storage_id_from_real_id(i))
     })
     const args = [
-      tx.object(dlmmConfig.factory),
+      tx.object(almmConfig.factory),
       tx.object(global_config_id),
       tx.pure.u64(params.baseFee),
       tx.pure.u16(params.binStep),
@@ -617,7 +630,7 @@ export class DlmmModule implements IModule {
       tx.pure.address(params.to),
       tx.object(CLOCK_ADDRESS),
     ]
-    const target = `${integrate.published_at}::${DlmmScript}::create_pair_add_liquidity`
+    const target = `${integrate.published_at}::${AlmmScript}::create_pair_add_liquidity`
 
     tx.moveCall({
       target,
@@ -627,7 +640,7 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  async swap(params: DLMMSwapParams): Promise<Transaction> {
+  async swap(params: ALMMSwapParams): Promise<Transaction> {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
@@ -668,7 +681,7 @@ export class DlmmModule implements IModule {
     ]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::swap`,
+      target: `${integrate.published_at}::${AlmmScript}::swap`,
       typeArguments,
       arguments: args,
     })
@@ -683,7 +696,7 @@ export class DlmmModule implements IModule {
     const args = [tx.object(params.pair), tx.pure.u64(params.offset), tx.pure.u64(params.limit)]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::fetch_bins`,
+      target: `${integrate.published_at}::${AlmmScript}::fetch_bins`,
       arguments: args,
       typeArguments,
     })
@@ -716,7 +729,7 @@ export class DlmmModule implements IModule {
   //  * @param assignPoolIds An array of pool IDs to filter the positions by.
   //  * @returns array of Position objects.
   //  */
-  // async getUserPositionById(positionId: string, showDisplay = true): Promise<DlmmPositionInfo> {
+  // async getUserPositionById(positionId: string, showDisplay = true): Promise<AlmmPositionInfo> {
   //   let position
   //   const ownerRes: any = await this._sdk.fullClient.getObject({
   //     id: positionId,
@@ -727,7 +740,7 @@ export class DlmmModule implements IModule {
   //   if (type.full_address === this.buildPositionType()) {
   //     position = this.buildPosition(ownerRes)
   //   } else {
-  //     throw new ClmmpoolsError(`Dlmm Position not exists. Get Position error:${ownerRes.error}`, PositionErrorCode.InvalidPositionObject)
+  //     throw new ClmmpoolsError(`Almm Position not exists. Get Position error:${ownerRes.error}`, PositionErrorCode.InvalidPositionObject)
   //   }
   //   const poolMap = new Set<string>()
   //   poolMap.add(position.pool)
@@ -750,7 +763,7 @@ export class DlmmModule implements IModule {
   //     coinTypeB: pool!.coin_b,
   //   })
   //   const rewards_token = pool_reward_coins.get(position.pool) || []
-  //   let positionRewards: DlmmEventEarnedRewards = { position_id: position.pos_object_id, reward: [], amount: [] }
+  //   let positionRewards: AlmmEventEarnedRewards = { position_id: position.pos_object_id, reward: [], amount: [] }
   //   if (rewards_token.length > 0) {
   //     positionRewards = await this.getEarnedRewards({
   //       pool_id: position.pool,
@@ -783,11 +796,11 @@ export class DlmmModule implements IModule {
    * @param assignPoolIds An array of pool IDs to filter the positions by.
    * @returns array of Position objects.
    */
-  async getUserPositions(accountAddress: string, assignPoolIds: string[] = [], showDisplay = true): Promise<DlmmPositionInfo[]> {
+  async getUserPositions(accountAddress: string, assignPoolIds: string[] = [], showDisplay = true): Promise<AlmmPositionInfo[]> {
     const allPosition = []
     const ownerRes: any = await this._sdk.fullClient.getOwnedObjectsByPage(accountAddress, {
       options: { showType: true, showContent: true, showDisplay, showOwner: true },
-      filter: { Package: this._sdk.sdkOptions.dlmm_pool.package_id },
+      filter: { Package: this._sdk.sdkOptions.almm_pool.package_id },
     })
 
     const hasAssignPoolIds = assignPoolIds.length > 0
@@ -813,7 +826,6 @@ export class DlmmModule implements IModule {
       poolMap.add(item.pool)
     }
     const poolList = await this.getPoolInfo(Array.from(poolMap))
-    this.updateCache(`${DlmmScript}_positionList_poolList`, poolList, cacheTime24h)
     const _params: GetPairRewarderParams[] = []
 
     for (const pool of poolList) {
@@ -827,8 +839,8 @@ export class DlmmModule implements IModule {
     const pool_reward_coins = await this.getPairRewarders(_params)
 
     const positionsLiquidityRes: EventPositionLiquidity[] = []
-    const positionsRewardsRes: DlmmEventEarnedRewards[] = []
-    const positionsFeesRes: DlmmEventEarnedFees[] = []
+    const positionsRewardsRes: AlmmEventEarnedRewards[] = []
+    const positionsFeesRes: AlmmEventEarnedFees[] = []
 
     // 1. Get Liquidity
     // 2. Get rewards
@@ -943,9 +955,9 @@ export class DlmmModule implements IModule {
     return out
   }
 
-  private buildPosition(object: SuiObjectResponse): DlmmPosition {
+  private buildPosition(object: SuiObjectResponse): AlmmPosition {
     if (object.error != null || object.data?.content?.dataType !== 'moveObject') {
-      throw new ClmmpoolsError(`Dlmm Position not exists. Get Position error:${object.error}`, PositionErrorCode.InvalidPositionObject)
+      throw new ClmmpoolsError(`Almm Position not exists. Get Position error:${object.error}`, PositionErrorCode.InvalidPositionObject)
     }
     const fields = getObjectFields(object)
 
@@ -982,7 +994,7 @@ export class DlmmModule implements IModule {
   }
 
   private buildPositionType(): string {
-    return `${this._sdk.sdkOptions.dlmm_pool.package_id}::dlmm_position::Position`
+    return `${this._sdk.sdkOptions.almm_pool.package_id}::almm_position::Position`
   }
 
   async getPositionsLiquidityLimit(params: GetPositionLiquidityParams[]): Promise<EventPositionLiquidity[]> {
@@ -1017,7 +1029,7 @@ export class DlmmModule implements IModule {
     const args = [tx.object(params.pair), tx.object(params.positionId)]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::position_liquidity`,
+      target: `${integrate.published_at}::${AlmmScript}::position_liquidity`,
       arguments: args,
       typeArguments,
     })
@@ -1062,7 +1074,7 @@ export class DlmmModule implements IModule {
     const args = [tx.object(params.pair)]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::pair_liquidity`,
+      target: `${integrate.published_at}::${AlmmScript}::pair_liquidity`,
       arguments: args,
       typeArguments,
     })
@@ -1099,8 +1111,8 @@ export class DlmmModule implements IModule {
     return out
   }
 
-  async getEarnedFeesLimit(params: DlmmCollectFeeParams[]): Promise<DlmmEventEarnedFees[]> {
-    const out: DlmmEventEarnedFees[] = []
+  async getEarnedFeesLimit(params: AlmmCollectFeeParams[]): Promise<AlmmEventEarnedFees[]> {
+    const out: AlmmEventEarnedFees[] = []
     const limit = 2
 
     for (let i = 0; i < params.length; i += limit) {
@@ -1115,7 +1127,7 @@ export class DlmmModule implements IModule {
     return out
   }
 
-  private async getEarnedFees(params: DlmmCollectFeeParams[]): Promise<DlmmEventEarnedFees[]> {
+  private async getEarnedFees(params: AlmmCollectFeeParams[]): Promise<AlmmEventEarnedFees[]> {
     let tx = new Transaction()
     for (const param of params) {
       tx = await this._getEarnedFees(param, tx)
@@ -1123,7 +1135,7 @@ export class DlmmModule implements IModule {
     return this._parseEarnedFees(tx)
   }
 
-  private async _getEarnedFees(params: DlmmCollectFeeParams, tx?: Transaction): Promise<Transaction> {
+  private async _getEarnedFees(params: AlmmCollectFeeParams, tx?: Transaction): Promise<Transaction> {
     tx = tx || new Transaction()
     const { integrate } = this.sdk.sdkOptions
 
@@ -1131,21 +1143,21 @@ export class DlmmModule implements IModule {
     const args = [tx.object(params.pool_id), tx.object(params.position_id)]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::earned_fees`,
+      target: `${integrate.published_at}::${AlmmScript}::earned_fees`,
       arguments: args,
       typeArguments,
     })
     return tx
   }
 
-  private async _parseEarnedFees(tx: Transaction): Promise<DlmmEventEarnedFees[]> {
+  private async _parseEarnedFees(tx: Transaction): Promise<AlmmEventEarnedFees[]> {
     const { simulationAccount } = this.sdk.sdkOptions
     const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
       transactionBlock: tx,
       sender: simulationAccount.address,
     })
 
-    const out: DlmmEventEarnedFees[] = []
+    const out: AlmmEventEarnedFees[] = []
     if (simulateRes.error != null) {
       throw new Error(`fetchPairRewards error code: ${simulateRes.error ?? 'unknown error'}`)
     }
@@ -1163,7 +1175,7 @@ export class DlmmModule implements IModule {
     return out
   }
 
-  async getEarnedRewards(params: DlmmRewardsParams[]): Promise<DlmmEventEarnedRewards[]> {
+  async getEarnedRewards(params: AlmmRewardsParams[]): Promise<AlmmEventEarnedRewards[]> {
     let tx = new Transaction()
     for (const param of params) {
       if (param.rewards_token.length !== 0) {
@@ -1173,16 +1185,16 @@ export class DlmmModule implements IModule {
     return this._parseEarnedRewards(tx)
   }
 
-  private async _getEarnedRewards(params: DlmmRewardsParams, tx?: Transaction): Promise<Transaction> {
+  private async _getEarnedRewards(params: AlmmRewardsParams, tx?: Transaction): Promise<Transaction> {
     tx = tx || new Transaction()
     const { integrate } = this.sdk.sdkOptions
 
     const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
 
     const args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
-    let target = `${integrate.published_at}::${DlmmScript}::earned_rewards`
+    let target = `${integrate.published_at}::${AlmmScript}::earned_rewards`
     if (params.rewards_token.length > 1) {
-      target = `${integrate.published_at}::${DlmmScript}::earned_rewards${params.rewards_token.length}`
+      target = `${integrate.published_at}::${AlmmScript}::earned_rewards${params.rewards_token.length}`
     }
 
     tx.moveCall({
@@ -1194,14 +1206,14 @@ export class DlmmModule implements IModule {
     return tx
   }
 
-  private async _parseEarnedRewards(tx: Transaction): Promise<DlmmEventEarnedRewards[]> {
+  private async _parseEarnedRewards(tx: Transaction): Promise<AlmmEventEarnedRewards[]> {
     const { simulationAccount } = this.sdk.sdkOptions
     const simulateRes = await this.sdk.fullClient.devInspectTransactionBlock({
       transactionBlock: tx,
       sender: simulationAccount.address,
     })
 
-    const res: DlmmEventEarnedRewards[] = []
+    const res: AlmmEventEarnedRewards[] = []
     if (simulateRes.error != null) {
       throw new Error(`getEarnedRewards error code: ${simulateRes.error ?? 'unknown error'}`)
     }
@@ -1231,7 +1243,6 @@ export class DlmmModule implements IModule {
 
   // return pool_id => reward_tokens
   async getPairRewarders(params: GetPairRewarderParams[]): Promise<Map<string, string[]>> {
-    params = [params[0]]
     let tx = new Transaction()
     for (const param of params) {
       tx = await this._getPairRewarders(param, tx)
@@ -1247,7 +1258,7 @@ export class DlmmModule implements IModule {
     const args = [tx.object(params.pool_id)]
 
     tx.moveCall({
-      target: `${integrate.published_at}::${DlmmScript}::get_pair_rewarders`,
+      target: `${integrate.published_at}::${AlmmScript}::get_pair_rewarders`,
       arguments: args,
       typeArguments,
     })
@@ -1268,7 +1279,7 @@ export class DlmmModule implements IModule {
     }
     simulateRes.events?.forEach((item: any) => {
       if (extractStructTagFromType(item.type).name === `EventPairRewardTypes`) {
-        const pairRewards: DlmmEventPairRewardTypes = {
+        const pairRewards: AlmmEventPairRewardTypes = {
           pair_id: '',
           tokens: [],
         }

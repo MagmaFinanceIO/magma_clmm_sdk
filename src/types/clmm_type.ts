@@ -327,7 +327,7 @@ export type ClmmConfig = {
   partners_id?: SuiObjectIdType
 }
 
-export type DlmmConfig = {
+export type AlmmConfig = {
   factory: SuiObjectIdType
   rewarder_global_vault: SuiObjectIdType
 }

@@ -1,6 +1,6 @@
 import BN from 'bn.js'
-import { ClmmpoolsError, DlmmStrategyCode } from '../errors/errors'
-import { autoFillXByWeight, autoFillYByWeight, toAmountAskSide, toAmountBidSide, toAmountBothSide } from './dlmmWeightToAmounts'
+import { ClmmpoolsError, AlmmStrategyCode } from '../errors/errors'
+import { autoFillXByWeight, autoFillYByWeight, toAmountAskSide, toAmountBidSide, toAmountBothSide } from './almmWeightToAmounts'
 import { BinDisplay } from '../types'
 
 export enum StrategyType {
@@ -82,7 +82,7 @@ function toWeightCurve(
   weight: number
 }[] {
   if (activeId < minBinId || activeId > maxBinId) {
-    throw new ClmmpoolsError('Invalid strategy params', DlmmStrategyCode.InvalidParams)
+    throw new ClmmpoolsError('Invalid strategy params', AlmmStrategyCode.InvalidParams)
   }
   const maxWeight = DEFAULT_MAX_WEIGHT
   const minWeight = DEFAULT_MIN_WEIGHT
@@ -122,7 +122,7 @@ function toWeightBidAsk(
   weight: number
 }[] {
   if (activeId < minBinId || activeId > maxBinId) {
-    throw new ClmmpoolsError('Invalid strategy params', DlmmStrategyCode.InvalidParams)
+    throw new ClmmpoolsError('Invalid strategy params', AlmmStrategyCode.InvalidParams)
   }
   const maxWeight = DEFAULT_MAX_WEIGHT
   const minWeight = DEFAULT_MIN_WEIGHT

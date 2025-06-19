@@ -41,7 +41,7 @@ export type MintAmountParams = {
   to: string
 }
 
-export type DLMMSwapParams = {
+export type ALMMSwapParams = {
   pair: string
   coinTypeA: string
   coinTypeB: string
@@ -131,7 +131,7 @@ export type EventPairLiquidity = {
   bin_y: number[] | string[] // y_amount, vector<u64>
 }
 
-export type DlmmPoolInfo = {
+export type AlmmPoolInfo = {
   pool_id: string
   bin_step: number
   coin_a: string
@@ -145,7 +145,7 @@ export type DlmmPoolInfo = {
   index?: number
 }
 
-export type DlmmAddLiquidityParams = {
+export type AlmmAddLiquidityParams = {
   pool_id: string
   coin_a: string
   coin_b: string
@@ -156,7 +156,7 @@ export type DlmmAddLiquidityParams = {
   rewards_token: string[]
 }
 
-export type DlmmBurnPositionParams = {
+export type AlmmBurnPositionParams = {
   pool_id: string
   position_id: string
   coin_a: string
@@ -164,7 +164,7 @@ export type DlmmBurnPositionParams = {
   rewards_token: string[]
 }
 
-export type DlmmShrinkPosition = {
+export type AlmmShrinkPosition = {
   pool_id: string
   position_id: string
   coin_a: string
@@ -173,7 +173,7 @@ export type DlmmShrinkPosition = {
   rewards_token: string[]
 }
 
-export type DlmmCollectRewardParams = {
+export type AlmmCollectRewardParams = {
   pool_id: string
   coin_a: string
   coin_b: string
@@ -181,15 +181,15 @@ export type DlmmCollectRewardParams = {
   rewards_token: string[]
 }
 
-export type DlmmCollectFeeParams = {
+export type AlmmCollectFeeParams = {
   pool_id: string
   coin_a: string
   coin_b: string
   position_id: string
 }
 
-// public entry fun earned_rewards2<X, Y, R1, R2>(pair: &DlmmPair<X, Y>, position_id: ID, clock: &Clock) {
-export type DlmmRewardsParams = {
+// public entry fun earned_rewards2<X, Y, R1, R2>(pair: &AlmmPair<X, Y>, position_id: ID, clock: &Clock) {
+export type AlmmRewardsParams = {
   pool_id: string
   position_id: string
   coin_a: string
@@ -197,7 +197,7 @@ export type DlmmRewardsParams = {
   rewards_token: string[]
 }
 
-export type DlmmEventEarnedFees = {
+export type AlmmEventEarnedFees = {
   position_id: string
   x: string
   y: string
@@ -205,7 +205,7 @@ export type DlmmEventEarnedFees = {
   fee_y: number
 }
 
-export type DlmmEventEarnedRewards = {
+export type AlmmEventEarnedRewards = {
   position_id: string
   reward: string[]
   amount: number[]
@@ -217,7 +217,7 @@ export type GetPairRewarderParams = {
   coin_b: string
 }
 
-export type DlmmEventPairRewardTypes = {
+export type AlmmEventPairRewardTypes = {
   pair_id: string
   tokens: string[]
 }
@@ -228,7 +228,7 @@ export type BinDisplay = {
   amountY: BN
 }
 
-export type DlmmCreatePairAddLiquidityParams = {
+export type AlmmCreatePairAddLiquidityParams = {
   baseFee: number // u64,
   binStep: number // u16,
   coinTypeA: string
@@ -240,7 +240,7 @@ export type DlmmCreatePairAddLiquidityParams = {
   to: string
 }
 
-export type DlmmPosition = {
+export type AlmmPosition = {
   pos_object_id: SuiObjectIdType
   owner: SuiObjectIdType
   pool: SuiObjectIdType
@@ -248,12 +248,12 @@ export type DlmmPosition = {
   bin_real_ids: number[]
 }
 
-export type DlmmPositionInfo = {
-  position: DlmmPosition
+export type AlmmPositionInfo = {
+  position: AlmmPosition
   liquidity: EventPositionLiquidity
-  rewards: DlmmEventEarnedRewards
-  fees: DlmmEventEarnedFees
-  contractPool: DlmmPoolInfo | undefined
+  rewards: AlmmEventEarnedRewards
+  fees: AlmmEventEarnedFees
+  contractPool: AlmmPoolInfo | undefined
 }
 
 export type MintByStrategyParams = {

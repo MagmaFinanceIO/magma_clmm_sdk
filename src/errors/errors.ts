@@ -82,7 +82,7 @@ export enum RouterErrorCode {
   InvalidServerResponse = `InvalidServerResponse`,
 }
 
-export enum DlmmStrategyCode {
+export enum AlmmStrategyCode {
   InvalidParams = `InvalidParams`,
 }
 
@@ -102,7 +102,7 @@ export type ClmmpoolsErrorCode =
   | RouterErrorCode
   | TypesErrorCode
   | LockErrorCode
-  | DlmmStrategyCode
+  | AlmmStrategyCode
 
 export class ClmmpoolsError extends Error {
   override message: string

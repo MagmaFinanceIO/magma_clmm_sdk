@@ -26,7 +26,7 @@ const SDKConfig = {
     magma_token: '0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1::magma_token::MAGMA_TOKEN',
     minter_id: '0x89435d6b2a510ba50ca23303f10e91ec058f138a88f69a43fe03cd22edb214c5',
   },
-  dlmmConfig: {
+  almmConfig: {
     factory: '',
     rewarder_global_vault: '',
   },
@@ -49,10 +49,10 @@ export const clmmTestnet: SdkOptions = {
     published_at: '0xca1b84a430d03e22dae08a7273c8e9dcfdb40b7f559574105f008600eeb7b4bd',
     config: SDKConfig.clmmConfig,
   },
-  dlmm_pool: {
+  almm_pool: {
     package_id: '',
     published_at: '',
-    config: SDKConfig.dlmmConfig,
+    config: SDKConfig.almmConfig,
   },
   distribution: {
     package_id: '0x45ac2371c33ca0df8dc784d62c8ce5126d42edd8c56820396524dff2ae0619b1',

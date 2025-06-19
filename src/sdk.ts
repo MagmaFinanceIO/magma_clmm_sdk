@@ -8,11 +8,11 @@ import { LockModule } from './modules/lockModule'
 import { TokenModule } from './modules/tokenModule'
 import { RouterModuleV2 } from './modules/routerModuleV2'
 import { CachedContent, cacheTime24h, extractStructTagFromType, getFutureTime, patchFixSuiObjectId } from './utils'
-import { MagmaConfigs, ClmmConfig, Ve33Config, CoinAsset, Package, SuiResource, SuiAddressType, TokenConfig, DlmmConfig } from './types'
+import { MagmaConfigs, ClmmConfig, Ve33Config, CoinAsset, Package, SuiResource, SuiAddressType, TokenConfig, AlmmConfig } from './types'
 import { ConfigModule } from './modules'
 import { RpcModule } from './modules/rpcModule'
 import { GaugeModule } from './modules/gaugeModule'
-import { DlmmModule } from './modules/dlmm'
+import { AlmmModule } from './modules/almm'
 
 /**
  * Represents options and configurations for an SDK.
@@ -60,7 +60,7 @@ export type SdkOptions = {
    */
   clmm_pool: Package<ClmmConfig>
 
-  dlmm_pool: Package<DlmmConfig>
+  almm_pool: Package<AlmmConfig>
 
   distribution: Package
 
@@ -123,7 +123,7 @@ export class MagmaClmmSDK {
 
   protected _gauge: GaugeModule
 
-  protected _dlmm: DlmmModule
+  protected _almm: AlmmModule
 
   /**
    * Provide interact  with a position rewarder interface.
@@ -170,7 +170,7 @@ export class MagmaClmmSDK {
     this._swap = new SwapModule(this)
     this._lock = new LockModule(this)
     this._gauge = new GaugeModule(this)
-    this._dlmm = new DlmmModule(this)
+    this._almm = new AlmmModule(this)
     this._pool = new PoolModule(this)
     this._position = new PositionModule(this)
     this._rewarder = new RewarderModule(this)
@@ -215,8 +215,8 @@ export class MagmaClmmSDK {
     return this._gauge
   }
 
-  get Dlmm(): DlmmModule {
-    return this._dlmm
+  get Almm(): AlmmModule {
+    return this._almm
   }
 
   /**
