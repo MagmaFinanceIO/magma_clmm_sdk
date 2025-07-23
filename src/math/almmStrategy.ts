@@ -70,9 +70,8 @@ function toWeightSpotBalanced(
   return distributions
 }
 
-const DEFAULT_MAX_WEIGHT = 2000
-const DEFAULT_MIN_WEIGHT = 200
-
+const DEFAULT_MAX_WEIGHT = 2000000000000
+const DEFAULT_MIN_WEIGHT = 200000000000
 function toWeightCurve(
   minBinId: number,
   maxBinId: number,

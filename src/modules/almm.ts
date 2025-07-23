@@ -7,7 +7,7 @@ import {
   get_storage_id_from_real_id,
 } from '@magmaprotocol/calc_dlmm'
 import Decimal from 'decimal.js'
-import { BinMath } from '../math'
+import { BinMath, MathUtil } from '../math'
 import {
   EventBin,
   CreatePairParams,
@@ -46,10 +46,11 @@ import {
   getObjectType,
   TransactionUtil,
 } from '../utils'
-import { CLOCK_ADDRESS, AlmmScript, getPackagerConfigs, SuiResource } from '../types'
+import { CLOCK_ADDRESS, AlmmScript, getPackagerConfigs, SuiResource, Rewarder } from '../types'
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
+import BN from 'bn.js'
 
 export class AlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -84,17 +85,35 @@ export class AlmmModule implements IModule {
       }
 
       const fields = getObjectFields(obj);
+
+      const rewarders: Rewarder[] = []
+      fields.rewarder_manager.fields.rewarders.forEach((item: any) => {
+        const { emissions_per_second } = item.fields
+        const emissionSeconds = MathUtil.fromX64(new BN(emissions_per_second))
+        const emissionsEveryDay = Math.floor(emissionSeconds.toNumber() * 60 * 60 * 24)
+
+        rewarders.push({
+          emissions_per_second,
+          coinAddress: extractStructTagFromType(item.fields.reward_coin.fields.name).source_address,
+          growth_global: item.fields.growth_global,
+          emissionsEveryDay,
+        })
+      })
+
+
       const poolInfo: AlmmPoolInfo = {
         pool_id: fields.id.id,
         bin_step: fields.bin_step,
         coin_a: fields.x.fields.name,
         coin_b: fields.y.fields.name,
         base_factor: fields.params.fields.base_factor,
-        base_fee: (fields.params.fields.base_factor / 10000) * (fields.bin_step / 10000),
+        base_fee: fields.params.fields.base_factor * fields.bin_step / 1e9,
         active_index: fields.params.fields.active_index,
         real_bin_id: get_real_id(fields.params.fields.active_index),
         coinAmountA: fields.reserve_x,
         coinAmountB: fields.reserve_y,
+        liquidity: fields.liquidity,
+        rewarder_infos: rewarders
       }
       poolList.push(poolInfo)
       this.updateCache(`${fields.id.id}_getPoolObject`, poolInfo, cacheTime24h)
@@ -542,8 +561,21 @@ export class AlmmModule implements IModule {
     return tx
   }
 
-  async collectFeeAndReward(params: AlmmCollectRewardParams & AlmmCollectFeeParams): Promise<Transaction> {
+
+  async collectFeeAndRewardList(paramsList: AlmmCollectRewardParams[]): Promise<Transaction> {
     let tx = new Transaction()
+    for (let index = 0; index < paramsList.length; index++) {
+      const params = paramsList[index];
+      tx = await this.collectFeeAndReward(params)
+    }
+    return tx
+  }
+
+
+  async collectFeeAndReward(params: AlmmCollectRewardParams & AlmmCollectFeeParams, tx?: Transaction): Promise<Transaction> {
+    if (!tx) {
+      tx = new Transaction()
+    }
     tx = await this.collectFees(params)
     if (params.rewards_token.length > 0) {
       tx = await this.collectReward(params, tx)
