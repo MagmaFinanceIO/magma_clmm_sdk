@@ -144,8 +144,8 @@ export type AlmmPoolInfo = {
   coinAmountA: string
   coinAmountB: string
   index?: number
-  liquidity:string;
-  rewarder_infos:Rewarder[]
+  liquidity: string;
+  rewarder_infos: Rewarder[]
 }
 
 export type AlmmAddLiquidityParams = {
@@ -256,7 +256,10 @@ export type AlmmPositionInfo = {
   liquidity: EventPositionLiquidity
   rewards: AlmmEventEarnedRewards
   fees: AlmmEventEarnedFees
-  contractPool: AlmmPoolInfo | undefined
+  contractPool: AlmmPoolInfo | undefined;
+  coin_type_a: string;
+  coin_type_b: string;
+
 }
 
 export type MintByStrategyParams = {

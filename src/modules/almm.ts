@@ -997,6 +997,8 @@ export class AlmmModule implements IModule {
         rewards: positionRewards || { position_id: item.pos_object_id, reward: [], amount: [] },
         fees: positionFees!,
         contractPool: pool,
+        coin_type_a: pool?.coin_a || '',
+        coin_type_b: pool?.coin_b || ''
       })
     }
 
