@@ -72,10 +72,7 @@ function toWeightSpotBalanced(
 
 const DEFAULT_MAX_WEIGHT = 2000000000000
 const DEFAULT_MIN_WEIGHT = 200000000000
-<<<<<<< HEAD:src/math/almmStrategy.ts
-=======
 
->>>>>>> d3500c5 (feat: change almm abi):src/math/dlmmStrategy.ts
 function toWeightCurve(
   minBinId: number,
   maxBinId: number,
