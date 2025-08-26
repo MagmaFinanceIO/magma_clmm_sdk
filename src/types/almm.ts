@@ -256,7 +256,7 @@ export type AlmmPositionInfo = {
   liquidity: EventPositionLiquidity
   rewards: AlmmEventEarnedRewards
   fees: AlmmEventEarnedFees
-  contractPool: AlmmPoolInfo | undefined;
+  contractPool: AlmmPoolInfo;
   coin_type_a: string;
   coin_type_b: string;
 

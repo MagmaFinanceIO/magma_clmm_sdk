@@ -824,6 +824,31 @@ export class AlmmModule implements IModule {
 
   /**
    * Gets a list of positions for the given account address.
+   * @param positionId The account address to get positions for.
+   * @param assignPoolIds An array of pool IDs to filter the positions by.
+   * @returns array of Position objects.
+   */
+  async getUserPositionById(positionId: string, showDisplay = true): Promise<AlmmPositionInfo[]> {
+    let allPosition = []
+    const ownerRes = await this._sdk.fullClient.getObject({
+      id: positionId,
+      options: { showContent: true, showType: true, showDisplay, showOwner: true },
+    })
+    if (ownerRes.data) {
+      const type = extractStructTagFromType(ownerRes.data.type!)
+      if (type.full_address === this.buildPositionType()) {
+        const position = this.buildPosition(ownerRes)
+        const cacheKey = `${position.pos_object_id}_getPositionList`
+        this.updateCache(cacheKey, position, cacheTime24h)
+        allPosition.push(position)
+      }
+      return await this.getUserPositionInfo(allPosition)
+    }
+    return []
+  }
+
+  /**
+   * Gets a list of positions for the given account address.
    * @param accountAddress The account address to get positions for.
    * @param assignPoolIds An array of pool IDs to filter the positions by.
    * @returns array of Position objects.
@@ -844,7 +869,7 @@ export class AlmmModule implements IModule {
         const cacheKey = `${position.pos_object_id}_getPositionList`
         this.updateCache(cacheKey, position, cacheTime24h)
         if (hasAssignPoolIds) {
-          if (assignPoolIds.includes(position.pos_object_id)) {
+          if (assignPoolIds.includes(position.pool)) {
             allPosition.push(position)
           }
         } else {
@@ -852,7 +877,10 @@ export class AlmmModule implements IModule {
         }
       }
     }
+    return this.getUserPositionInfo(allPosition)
+  }
 
+  private async getUserPositionInfo(allPosition: AlmmPosition[]): Promise<AlmmPositionInfo[]> {
     const poolMap = new Set<string>()
     for (const item of allPosition) {
       poolMap.add(item.pool)
@@ -980,7 +1008,7 @@ export class AlmmModule implements IModule {
         liquidity: positionLiquidity!,
         rewards: positionRewards || { position_id: item.pos_object_id, reward: [], amount: [] },
         fees: positionFees!,
-        contractPool: pool,
+        contractPool: pool!,
         coin_type_a: pool?.coin_a || '',
         coin_type_b: pool?.coin_b || ''
       })

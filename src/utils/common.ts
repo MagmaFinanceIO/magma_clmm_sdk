@@ -274,6 +274,7 @@ export function buildPosition(object: SuiObjectResponse): Position {
       fee_growth_inside_b: '0',
       fee_owed_b: '0',
       position_status: ClmmPositionStatus.Exists,
+      name:fields.name
     }
   }
 
