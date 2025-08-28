@@ -87,6 +87,7 @@ export type EventPairParams = {
   time_of_last_update: number | string // u64
   oracle_index: number // u16
   active_index: number // u32, 24bit StorageId
+  protocol_variable_share: number
 }
 
 export type EventBin = {
@@ -102,11 +103,15 @@ export type EventBin = {
   fee_y: number | string // u64
   fee_growth_x: number | string // u256
   fee_growth_y: number | string // u256
-  rewarder_growth: number[] | string[] // vector<u256>
+  rewarder_growth: RewarderGrowth // vector<u256>
   distribution_growth: number | string // u256
   distribution_last_updated: number | string // u64
 
   real_bin_id: number
+}
+
+export type RewarderGrowth = {
+  contents: string[]
 }
 
 export type EventPositionLiquidity = {
@@ -144,8 +149,9 @@ export type AlmmPoolInfo = {
   coinAmountA: string
   coinAmountB: string
   index?: number
-  liquidity: string;
+  liquidity: string
   rewarder_infos: Rewarder[]
+  params: EventPairParams
 }
 
 export type AlmmAddLiquidityParams = {
@@ -256,10 +262,9 @@ export type AlmmPositionInfo = {
   liquidity: EventPositionLiquidity
   rewards: AlmmEventEarnedRewards
   fees: AlmmEventEarnedFees
-  contractPool: AlmmPoolInfo;
-  coin_type_a: string;
-  coin_type_b: string;
-
+  contractPool: AlmmPoolInfo
+  coin_type_a: string
+  coin_type_b: string
 }
 
 export type MintByStrategyParams = {
@@ -285,7 +290,7 @@ export type MintByStrategyParams = {
    */
   active_bin: number
   /**
-   * base 10000 =100%
+   * base 10000 = 100%
    */
   slippage: number
 }
@@ -308,4 +313,19 @@ export type RaiseByStrategyParams = {
 
   receiver: string
   rewards_token: string[]
+}
+
+export type EventCreatePair = {
+  pair_id: string
+  factory_id: string
+  bin_step: number // u16
+  active_id: number // u32
+  params: EventPairParams
+  token_x: Token
+  token_y: Token
+  lp_token_id: string
+}
+
+export type Token = {
+  name: string
 }

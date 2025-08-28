@@ -4,7 +4,7 @@ import MagmaClmmSDK, { SdkOptions } from '../main'
 const SDKConfig = {
   clmmConfig: {
     pools_id: '0xfa145b9de10fe858be81edd1c6cdffcf27be9d016de02a1345eb1009a68ba8b2',
-    // clmm and dlmm both use this global_config
+    // clmm and almm both use this global_config
     global_config_id: '0x4c4e1402401f72c7d8533d0ed8d5f8949da363c7a3319ccef261ffe153d32f8a',
     global_vault_id: '0xa7e1102f222b6eb81ccc8a126e7feb2353342be9df6f6646a77c4519da29c071',
     admin_cap_id: '0x89c1a321291d15ddae5a086c9abc533dff697fde3d89e0ca836c41af73e36a75',
@@ -55,8 +55,8 @@ export const clmmMainnet: SdkOptions = {
     config: SDKConfig.clmmConfig,
   },
   almm_pool: {
-    package_id: '',
-    published_at: '',
+    package_id: '0x17ec44d20706af7f4ca563be7424bfa07c190f7f47bec157fa1eedaeec0bae3d',
+    published_at: '0x17ec44d20706af7f4ca563be7424bfa07c190f7f47bec157fa1eedaeec0bae3d',
     config: SDKConfig.almmConfig,
   },
   distribution: {
@@ -64,8 +64,8 @@ export const clmmMainnet: SdkOptions = {
     published_at: '0xee4a1f231dc45a303389998fe26c4e39278cf68b404b32e4f0b9769129b8267b',
   },
   integrate: {
-    package_id: '0x2e704d8afc1d6d7f154dee337cc14c153f6f9ce1708213e5dc04a32afe0e45f1',
-    published_at: '0x49e9f06c58a36830fe0d83291f002012e72b00a4ec9b3a6304c40fc5712bb6e3',
+    package_id: '0x7701ae515703598d6f2451f4bfec857d3cba994fd3e1968b11110d674e3126c4',
+    published_at: '0x7701ae515703598d6f2451f4bfec857d3cba994fd3e1968b11110d674e3126c4',
   },
   deepbook: {
     package_id: '0x000000000000000000000000000000000000000000000000000000000000dee9',

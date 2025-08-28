@@ -72,6 +72,7 @@ function toWeightSpotBalanced(
 
 const DEFAULT_MAX_WEIGHT = 2000000000000
 const DEFAULT_MIN_WEIGHT = 200000000000
+
 function toWeightCurve(
   minBinId: number,
   maxBinId: number,
@@ -304,9 +305,9 @@ function mergeBinDisplay(to: BinDisplay[], from: BinDisplay[]): BinDisplay[] {
  * @param amountXInActiveBin The amount of X token in the active bin.
  * @param amountYInActiveBin The amount of Y token in the active bin.
  * @param strategyType The strategy type.
- * @param mintX The mint info of X token. Get from DLMM instance.
- * @param mintY The mint info of Y token. Get from DLMM instance.
- * @param clock The clock info. Get from DLMM instance.
+ * @param mintX The mint info of X token. Get from ALMM instance.
+ * @param mintY The mint info of Y token. Get from ALMM instance.
+ * @param clock The clock info. Get from ALMM instance.
  * @returns The distribution of liquidity.
  */
 export function toAmountsBothSideByStrategy(

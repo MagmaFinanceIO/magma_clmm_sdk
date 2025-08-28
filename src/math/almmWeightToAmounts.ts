@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
-import { get_price_x128_from_real_id } from '@magmaprotocol/calc_dlmm'
+import { get_price_x128_from_real_id } from '@magmaprotocol/calc_almm'
 
 export function getPriceOfBinByBinId(binId: number, binStep: number): Decimal {
   const twoDec = new Decimal(2)
@@ -142,8 +142,8 @@ export function autoFillXByWeight(
  * @param activeId active bin id
  * @param totalAmount total amount of token Y to be distributed
  * @param distributions weight distribution of each bin
- * @param mintY mint of token Y, get from DLMM instance
- * @param clock clock of the program, for calculating transfer fee, get from DLMM instance
+ * @param mintY mint of token Y, get from ALMM instance
+ * @param clock clock of the program, for calculating transfer fee, get from ALMM instance
  * @returns array of {binId, amount} where amount is the amount of token Y in each bin
  */
 export function toAmountBidSide(
@@ -181,8 +181,8 @@ export function toAmountBidSide(
  * @param activeId active bin id
  * @param totalAmount total amount of token Y to be distributed
  * @param distributions weight distribution of each bin
- * @param mintX mint of token X, get from DLMM instance
- * @param clock clock of the program, for calculating transfer fee, get from DLMM instance
+ * @param mintX mint of token X, get from ALMM instance
+ * @param clock clock of the program, for calculating transfer fee, get from ALMM instance
  * @returns array of {binId, amount} where amount is the amount of token X in each bin
  */
 export function toAmountAskSide(
@@ -235,9 +235,9 @@ export function toAmountAskSide(
  * @param amountXInActiveBin - Amount of token X already in the active bin.
  * @param amountYInActiveBin - Amount of token Y already in the active bin.
  * @param distributions - Array of bins with their respective weight distributions.
- * @param mintX - Mint information for token X. Get from DLMM instance.
- * @param mintY - Mint information for token Y. Get from DLMM instance.
- * @param clock - Clock instance. Get from DLMM instance.
+ * @param mintX - Mint information for token X. Get from ALMM instance.
+ * @param mintY - Mint information for token Y. Get from ALMM instance.
+ * @param clock - Clock instance. Get from ALMM instance.
  * @returns An array of objects containing binId, amountX, and amountY for each bin.
  */
 

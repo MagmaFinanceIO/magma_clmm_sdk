@@ -5,8 +5,9 @@ import {
   get_real_id,
   get_real_id_from_price_x128,
   get_storage_id_from_real_id,
-} from '@magmaprotocol/calc_dlmm'
+} from 'calc_almm/pkg/pkg-bundler/calc_almm'
 import Decimal from 'decimal.js'
+import BN from 'bn.js'
 import { BinMath, MathUtil } from '../math'
 import {
   EventBin,
@@ -34,7 +35,9 @@ import {
   AlmmPositionInfo,
   MintByStrategyParams,
   RaiseByStrategyParams,
+  EventCreatePair,
 } from '../types/almm'
+import { DataPage, PaginationArgs } from '../types/sui'
 import {
   CachedContent,
   cacheTime24h,
@@ -50,7 +53,6 @@ import { CLOCK_ADDRESS, AlmmScript, getPackagerConfigs, SuiResource, Rewarder } 
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
-import BN from 'bn.js'
 
 export class AlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -65,26 +67,63 @@ export class AlmmModule implements IModule {
     return this._sdk
   }
 
-  async getPoolInfo(pools: string[]): Promise<AlmmPoolInfo[]> {
+  async getPools(paginationArgs: PaginationArgs = 'all', forceRefresh = false): Promise<EventCreatePair[]> {
+    const { package_id } = this._sdk.sdkOptions.almm_pool
 
-    const cachePoolList: AlmmPoolInfo[] = [];
-    pools = pools.filter(poolID => {
-      const cacheData = this.getCache<AlmmPoolInfo>(`${poolID}_getPoolObject`, false);
+    const allPools: EventCreatePair[] = []
+    const cacheKey = `${package_id}_getInitCreatePairEvent`
+    const cacheData = this.getCache<EventCreatePair[]>(cacheKey, forceRefresh)
+
+    if (cacheData !== undefined) {
+      allPools.push(...cacheData)
+    }
+
+    if (allPools.length === 0) {
+      try {
+        const moveEventType = `${package_id}::almm_pair::EventCreatePair`
+        const objects = await this._sdk.fullClient.queryEventsByPage({ MoveEventType: moveEventType }, paginationArgs)
+        const dataPage: DataPage<EventCreatePair> = {
+          data: [],
+          hasNextPage: false,
+        }
+
+        dataPage.hasNextPage = objects.hasNextPage
+        dataPage.nextCursor = objects.nextCursor
+
+        objects.data.forEach((object: any) => {
+          const fields = object.parsedJson
+          if (fields) {
+            allPools.push(fields)
+          }
+        })
+
+        this.updateCache(cacheKey, allPools, cacheTime24h)
+      } catch (error) {
+        console.log('getCreatePairEvents', error)
+      }
+    }
+    return allPools
+  }
+
+  async getPoolInfo(pools: string[]): Promise<AlmmPoolInfo[]> {
+    const cachePoolList: AlmmPoolInfo[] = []
+    pools = pools.filter((poolID) => {
+      const cacheData = this.getCache<AlmmPoolInfo>(`${poolID}_getPoolObject`, false)
       if (cacheData !== undefined) {
-        cachePoolList.push(cacheData);
+        cachePoolList.push(cacheData)
         return false
       }
       return true
     })
     const objects = await this._sdk.fullClient.batchGetObjects(pools, { showContent: true })
 
-    const poolList: AlmmPoolInfo[] = [];
+    const poolList: AlmmPoolInfo[] = []
     objects.forEach((obj) => {
       if (obj.error != null || obj.data?.content?.dataType !== 'moveObject') {
         throw new ClmmpoolsError(`Invalid objects. error: ${obj.error}`, TypesErrorCode.InvalidType)
       }
 
-      const fields = getObjectFields(obj);
+      const fields = getObjectFields(obj)
 
       const rewarders: Rewarder[] = []
       fields.rewarder_manager.fields.rewarders.forEach((item: any) => {
@@ -100,25 +139,24 @@ export class AlmmModule implements IModule {
         })
       })
 
-
       const poolInfo: AlmmPoolInfo = {
         pool_id: fields.id.id,
         bin_step: fields.bin_step,
         coin_a: fields.x.fields.name,
         coin_b: fields.y.fields.name,
         base_factor: fields.params.fields.base_factor,
-        base_fee: fields.params.fields.base_factor * fields.bin_step / 1e9,
+        base_fee: (fields.params.fields.base_factor * fields.bin_step) / 1e9,
         active_index: fields.params.fields.active_index,
         real_bin_id: get_real_id(fields.params.fields.active_index),
         coinAmountA: fields.reserve_x,
         coinAmountB: fields.reserve_y,
         liquidity: fields.liquidity,
-        rewarder_infos: rewarders
+        rewarder_infos: rewarders,
+        params: fields.params.fields,
       }
       poolList.push(poolInfo)
       this.updateCache(`${fields.id.id}_getPoolObject`, poolInfo, cacheTime24h)
     })
-
 
     return [...cachePoolList, ...poolList]
   }
@@ -160,6 +198,7 @@ export class AlmmModule implements IModule {
       time_of_last_update: 0,
       oracle_index: 0,
       active_index: 0,
+      protocol_variable_share: 0,
     }
     simulateRes.events?.forEach((item: any) => {
       console.log(extractStructTagFromType(item.type).name)
@@ -561,16 +600,14 @@ export class AlmmModule implements IModule {
     return tx
   }
 
-
   async collectFeeAndRewardList(paramsList: AlmmCollectRewardParams[]): Promise<Transaction> {
     let tx = new Transaction()
     for (let index = 0; index < paramsList.length; index++) {
-      const params = paramsList[index];
+      const params = paramsList[index]
       tx = await this.collectFeeAndReward(params)
     }
     return tx
   }
-
 
   async collectFeeAndReward(params: AlmmCollectRewardParams & AlmmCollectFeeParams, tx?: Transaction): Promise<Transaction> {
     if (!tx) {
@@ -829,7 +866,7 @@ export class AlmmModule implements IModule {
    * @returns array of Position objects.
    */
   async getUserPositionById(positionId: string, showDisplay = true): Promise<AlmmPositionInfo[]> {
-    let allPosition = []
+    const allPosition = []
     const ownerRes = await this._sdk.fullClient.getObject({
       id: positionId,
       options: { showContent: true, showType: true, showDisplay, showOwner: true },
@@ -851,6 +888,7 @@ export class AlmmModule implements IModule {
    * Gets a list of positions for the given account address.
    * @param accountAddress The account address to get positions for.
    * @param assignPoolIds An array of pool IDs to filter the positions by.
+   * @param showDisplay When some testnet rpc nodes can't return object's display data, you can set this option to false, avoid returning errors. Default set true.
    * @returns array of Position objects.
    */
   async getUserPositions(accountAddress: string, assignPoolIds: string[] = [], showDisplay = true): Promise<AlmmPositionInfo[]> {
@@ -1010,7 +1048,7 @@ export class AlmmModule implements IModule {
         fees: positionFees!,
         contractPool: pool!,
         coin_type_a: pool?.coin_a || '',
-        coin_type_b: pool?.coin_b || ''
+        coin_type_b: pool?.coin_b || '',
       })
     }
 
