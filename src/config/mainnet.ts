@@ -4,7 +4,7 @@ import MagmaClmmSDK, { SdkOptions } from '../main'
 const SDKConfig = {
   clmmConfig: {
     pools_id: '0xfa145b9de10fe858be81edd1c6cdffcf27be9d016de02a1345eb1009a68ba8b2',
-    // clmm and dlmm both use this global_config
+    // clmm and almm both use this global_config
     global_config_id: '0x4c4e1402401f72c7d8533d0ed8d5f8949da363c7a3319ccef261ffe153d32f8a',
     global_vault_id: '0xa7e1102f222b6eb81ccc8a126e7feb2353342be9df6f6646a77c4519da29c071',
     admin_cap_id: '0x89c1a321291d15ddae5a086c9abc533dff697fde3d89e0ca836c41af73e36a75',

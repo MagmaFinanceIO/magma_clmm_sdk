@@ -5,7 +5,7 @@ import {
   get_real_id,
   get_real_id_from_price_x128,
   get_storage_id_from_real_id,
-} from 'calc_almm/pkg/pkg-bundler/calc_dlmm'
+} from 'calc_almm/pkg/pkg-bundler/calc_almm'
 import Decimal from 'decimal.js'
 import { BinMath, MathUtil } from '../math'
 import {
@@ -106,25 +106,24 @@ export class AlmmModule implements IModule {
   }
 
   async getPoolInfo(pools: string[]): Promise<AlmmPoolInfo[]> {
-
-    const cachePoolList: AlmmPoolInfo[] = [];
-    pools = pools.filter(poolID => {
-      const cacheData = this.getCache<AlmmPoolInfo>(`${poolID}_getPoolObject`, false);
+    const cachePoolList: AlmmPoolInfo[] = []
+    pools = pools.filter((poolID) => {
+      const cacheData = this.getCache<AlmmPoolInfo>(`${poolID}_getPoolObject`, false)
       if (cacheData !== undefined) {
-        cachePoolList.push(cacheData);
+        cachePoolList.push(cacheData)
         return false
       }
       return true
     })
     const objects = await this._sdk.fullClient.batchGetObjects(pools, { showContent: true })
 
-    const poolList: AlmmPoolInfo[] = [];
+    const poolList: AlmmPoolInfo[] = []
     objects.forEach((obj) => {
       if (obj.error != null || obj.data?.content?.dataType !== 'moveObject') {
         throw new ClmmpoolsError(`Invalid objects. error: ${obj.error}`, TypesErrorCode.InvalidType)
       }
 
-      const fields = getObjectFields(obj);
+      const fields = getObjectFields(obj)
 
       const rewarders: Rewarder[] = []
       fields.rewarder_manager.fields.rewarders.forEach((item: any) => {
@@ -140,14 +139,13 @@ export class AlmmModule implements IModule {
         })
       })
 
-
       const poolInfo: AlmmPoolInfo = {
         pool_id: fields.id.id,
         bin_step: fields.bin_step,
         coin_a: fields.x.fields.name,
         coin_b: fields.y.fields.name,
         base_factor: fields.params.fields.base_factor,
-        base_fee: fields.params.fields.base_factor * fields.bin_step / 1e9,
+        base_fee: (fields.params.fields.base_factor * fields.bin_step) / 1e9,
         active_index: fields.params.fields.active_index,
         real_bin_id: get_real_id(fields.params.fields.active_index),
         coinAmountA: fields.reserve_x,
@@ -159,7 +157,6 @@ export class AlmmModule implements IModule {
       poolList.push(poolInfo)
       this.updateCache(`${fields.id.id}_getPoolObject`, poolInfo, cacheTime24h)
     })
-
 
     return [...cachePoolList, ...poolList]
   }
@@ -603,16 +600,14 @@ export class AlmmModule implements IModule {
     return tx
   }
 
-
   async collectFeeAndRewardList(paramsList: AlmmCollectRewardParams[]): Promise<Transaction> {
     let tx = new Transaction()
     for (let index = 0; index < paramsList.length; index++) {
-      const params = paramsList[index];
+      const params = paramsList[index]
       tx = await this.collectFeeAndReward(params)
     }
     return tx
   }
-
 
   async collectFeeAndReward(params: AlmmCollectRewardParams & AlmmCollectFeeParams, tx?: Transaction): Promise<Transaction> {
     if (!tx) {
@@ -1053,7 +1048,7 @@ export class AlmmModule implements IModule {
         fees: positionFees!,
         contractPool: pool!,
         coin_type_a: pool?.coin_a || '',
-        coin_type_b: pool?.coin_b || ''
+        coin_type_b: pool?.coin_b || '',
       })
     }
 

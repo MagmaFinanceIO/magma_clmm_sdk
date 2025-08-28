@@ -10,7 +10,7 @@
     "test": "jest",
     "lint:fix": "eslint src/*.ts src/**/*.ts --fix",
     "build": "rm -rf dist/ && tsc",
-    "build:calc_dlmm": "bash calc_dlmm/build.sh",
+    "build:calc_almm": "bash calc_almm/build.sh",
     "testbuild": "tsc",
     "prepare": "husky install",
     "build:tsup": "npm run build:clean && npm run _build:node",
@@ -74,7 +74,7 @@
     "@mysten/sui": "1.35.0"
   },
   "dependencies": {
-    "@magmaprotocol/calc_almm": "^0.2.3",
+    "@magmaprotocol/calc_almm": "^0.2.2",
     "@suchipi/femver": "^1.0.0",
     "@syntsugar/cc-graph": "^0.1.1",
     "@types/bn.js": "^5.1.1",

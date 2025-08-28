@@ -1,6 +1,6 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import BN from 'bn.js'
-import { get_price_x128_from_real_id, get_real_id_from_price_x128, get_swap_out, get_swap_in } from 'calc_almm/pkg/pkg-bundler/calc_dlmm'
+import { get_price_x128_from_real_id, get_real_id_from_price_x128, get_swap_out, get_swap_in } from 'calc_almm/pkg/pkg-bundler/calc_almm'
 import { initMagmaSDK } from './config'
 import { adjustForSlippage, Percentage } from './math'
 import { d } from './utils'
@@ -271,8 +271,6 @@ async function test_panter() {
 
   await magmaClmmSDK.Almm.addLiquidityByStrategy
 
-  return
-
   // Whether the swap direction is token a to token b
   const a2b = false
   // fix input token amount
@@ -284,7 +282,7 @@ async function test_panter() {
   // Fetch pool data
   const pool = await magmaClmmSDK.Pool.getPool('0x0128aade80123e3f6c5c0eac1a2dee2512bbdc92c9c1b386b0fd66e6cddfaa72')
   // Estimated amountIn amountOut fee
-  const res: any = await magmaClmmSDK.Swap.preswap({
+  const res3: any = await magmaClmmSDK.Swap.preswap({
     pool,
     currentSqrtPrice: pool.current_sqrt_price,
     coinTypeA: pool.coinTypeA,
@@ -305,7 +303,7 @@ async function test_panter() {
     coinTypeB: pool.coinTypeB,
     a2b,
     by_amount_in: byAmountIn,
-    amount: res.amount.toString(),
+    amount: res3.amount.toString(),
     amount_limit: '1',
     swap_partner: partner,
   })
