@@ -1,5 +1,6 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import BN from 'bn.js'
+import { get_price_x128_from_real_id, get_real_id_from_price_x128, get_swap_out, get_swap_in } from 'calc_almm/pkg/pkg-bundler/calc_dlmm'
 import { initMagmaSDK } from './config'
 import { adjustForSlippage, Percentage } from './math'
 import { d } from './utils'
@@ -209,13 +210,68 @@ async function run_test() {
 }
 
 async function test_panter() {
-  const sendKeypair = Ed25519Keypair.fromSecretKey('')
+  const sendKeypair = Ed25519Keypair.fromSecretKey('suiprivkey1qqlls5cx27y28zrwc3rwhex2g832nfgax4teh2xmnnel9wqnqd4v2n5pqjz')
 
   const magmaClmmSDK = initMagmaSDK({
     network: 'mainnet',
     simulationAccount: sendKeypair.getPublicKey().toSuiAddress(),
   })
   magmaClmmSDK.senderAddress = sendKeypair.getPublicKey().toSuiAddress()
+
+  // // 获取池子列表
+  // const pools = await magmaClmmSDK.Almm.getPools()
+  // console.log('####', pools)
+
+  // 获取用户的positions
+  const almmPositions = await magmaClmmSDK.Almm.getUserPositions('0xc96690822c4146863abcf370bd3ff651200ddddbd0c556e89d3fc4c35aaf48e3')
+  // console.log(`positionDetail:`, almmPositions)
+  // console.log(`positions length: ${almmPositions.length}`)
+
+  const res2 = await magmaClmmSDK.Almm.getEarnedRewards([
+    {
+      pool_id: '0x540e56df0e57ac0d779a64d1f9f01fe9ac03d4758623105e05b4f9facc5d0f61',
+      position_id: '0xdbc446534c4be4dc3df8a5ddf84b526a1f94366b2e6ef427bf85285a3e55161f',
+      coin_a: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      coin_b: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
+      rewards_token: ['0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'],
+    },
+  ])
+  console.log('### ', res2)
+
+  const pools = await magmaClmmSDK.Almm.getPoolInfo(['0x540e56df0e57ac0d779a64d1f9f01fe9ac03d4758623105e05b4f9facc5d0f61'])
+
+  const bins = await magmaClmmSDK.Almm.fetchBins({
+    pair: '0x540e56df0e57ac0d779a64d1f9f01fe9ac03d4758623105e05b4f9facc5d0f61',
+    coinTypeA: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+    coinTypeB: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
+    offset: 0,
+    limit: 500,
+  })
+
+  const params_str = JSON.stringify({ params: pools[0].params, bins, bin_step: pools[0].bin_step })
+  const now_timestamp = Date.now()
+  const swap_out = get_swap_out(params_str, BigInt(10000), true, BigInt(now_timestamp))
+  console.log('swap_out: ', swap_out)
+  // { amount_in_left: 10, amount_out: 110849443, fee: 10 }
+
+  const swap_in = get_swap_in(params_str, BigInt(110849443), true, BigInt(now_timestamp))
+  console.log('swap_in: ', swap_in)
+  // { amount_in: 9999, amount_out_left: 0, fee: 10 }
+
+  const res = await magmaClmmSDK.Almm.swap({
+    pair: '0x540e56df0e57ac0d779a64d1f9f01fe9ac03d4758623105e05b4f9facc5d0f61',
+    coinTypeA: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+    coinTypeB: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
+
+    amountIn: 9999,
+    minAmountOut: 0,
+    swapForY: true,
+    to: 'YourAddress',
+  })
+
+  await magmaClmmSDK.Almm.addLiquidityByStrategy
+
+  return
 
   // Whether the swap direction is token a to token b
   const a2b = false
@@ -287,4 +343,6 @@ async function pool_gauge() {
 // test_panter()
 // run_test()
 
-pool_gauge()
+// pool_gauge()
+
+test_panter()

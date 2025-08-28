@@ -1,5 +1,6 @@
-use alloy_primitives::U256;
 use std::str::FromStr;
+
+use alloy_primitives::U256;
 use wasm_bindgen::prelude::*;
 
 use crate::{
@@ -23,7 +24,7 @@ pub fn get_storage_id_from_real_id(id: i32) -> u32 {
     if id >= 0i32 {
         id as u32 + REAL_ID_SHIFT
     } else {
-        REAL_ID_SHIFT - id.abs() as u32
+        REAL_ID_SHIFT - id.unsigned_abs()
     }
 }
 
@@ -101,16 +102,16 @@ fn test_invalid_storage_id() {
 
 #[test]
 fn test_get_storage_id() {
-    assert!(get_storage_id_from_real_id(i32::from(1)) == (1 + REAL_ID_SHIFT));
+    assert!(get_storage_id_from_real_id(1i32) == (1 + REAL_ID_SHIFT));
     assert!(get_storage_id_from_real_id(0i32) == REAL_ID_SHIFT);
     assert!(get_storage_id_from_real_id(i32_neg_from(1)) == (REAL_ID_SHIFT - 1));
     assert!(get_storage_id_from_real_id(7787) == 8396395);
     assert!(
         get_price_x128_from_storage_id(8391240, 50).to_string()
-            == "170967668064246121537697181132590453180080978".to_string()
+            == "170967668064246121537697181132590453180080978"
     );
 }
 
 fn i32_neg_from(n: u32) -> i32 {
-    -1 * n as i32
+    -(n as i32)
 }

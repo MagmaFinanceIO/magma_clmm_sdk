@@ -7,5 +7,5 @@ package.test.json
 /examples/package-lock.json
 /examples/*.js
 /.idea
-/calc_dlmm/target/
-/calc_dlmm/pkg/
+/calc_almm/target/
+/calc_almm/pkg/
