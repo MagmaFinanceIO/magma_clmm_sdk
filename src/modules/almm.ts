@@ -7,7 +7,6 @@ import {
   get_storage_id_from_real_id,
 } from 'calc_almm/pkg/pkg-bundler/calc_dlmm'
 import Decimal from 'decimal.js'
-import BN from 'bn.js'
 import { BinMath, MathUtil } from '../math'
 import {
   EventBin,
@@ -53,6 +52,7 @@ import { CLOCK_ADDRESS, AlmmScript, getPackagerConfigs, SuiResource, Rewarder } 
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
+import BN from 'bn.js'
 
 export class AlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -106,24 +106,25 @@ export class AlmmModule implements IModule {
   }
 
   async getPoolInfo(pools: string[]): Promise<AlmmPoolInfo[]> {
-    const cachePoolList: AlmmPoolInfo[] = []
-    pools = pools.filter((poolID) => {
-      const cacheData = this.getCache<AlmmPoolInfo>(`${poolID}_getPoolObject`, false)
+
+    const cachePoolList: AlmmPoolInfo[] = [];
+    pools = pools.filter(poolID => {
+      const cacheData = this.getCache<AlmmPoolInfo>(`${poolID}_getPoolObject`, false);
       if (cacheData !== undefined) {
-        cachePoolList.push(cacheData)
+        cachePoolList.push(cacheData);
         return false
       }
       return true
     })
     const objects = await this._sdk.fullClient.batchGetObjects(pools, { showContent: true })
 
-    const poolList: AlmmPoolInfo[] = []
+    const poolList: AlmmPoolInfo[] = [];
     objects.forEach((obj) => {
       if (obj.error != null || obj.data?.content?.dataType !== 'moveObject') {
         throw new ClmmpoolsError(`Invalid objects. error: ${obj.error}`, TypesErrorCode.InvalidType)
       }
 
-      const fields = getObjectFields(obj)
+      const fields = getObjectFields(obj);
 
       const rewarders: Rewarder[] = []
       fields.rewarder_manager.fields.rewarders.forEach((item: any) => {
@@ -139,13 +140,14 @@ export class AlmmModule implements IModule {
         })
       })
 
+
       const poolInfo: AlmmPoolInfo = {
         pool_id: fields.id.id,
         bin_step: fields.bin_step,
         coin_a: fields.x.fields.name,
         coin_b: fields.y.fields.name,
         base_factor: fields.params.fields.base_factor,
-        base_fee: (fields.params.fields.base_factor * fields.bin_step) / 1e9,
+        base_fee: fields.params.fields.base_factor * fields.bin_step / 1e9,
         active_index: fields.params.fields.active_index,
         real_bin_id: get_real_id(fields.params.fields.active_index),
         coinAmountA: fields.reserve_x,
@@ -157,6 +159,7 @@ export class AlmmModule implements IModule {
       poolList.push(poolInfo)
       this.updateCache(`${fields.id.id}_getPoolObject`, poolInfo, cacheTime24h)
     })
+
 
     return [...cachePoolList, ...poolList]
   }
@@ -230,7 +233,6 @@ export class AlmmModule implements IModule {
       tx.pure.u64(params.base_fee),
       tx.pure.u16(params.bin_step),
       tx.pure.u32(storage_id),
-      tx.object(CLOCK_ADDRESS),
     ]
 
     tx.moveCall({
@@ -553,21 +555,14 @@ export class AlmmModule implements IModule {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { integrate, clmm_pool, almm_pool } = this.sdk.sdkOptions
+    const { integrate, clmm_pool } = this.sdk.sdkOptions
     const clmmConfigs = getPackagerConfigs(clmm_pool)
-    const almmConfig = getPackagerConfigs(almm_pool)
     const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
-    let args = [tx.object(almmConfig.factory), tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
+    let args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
     let target = `${integrate.published_at}::${AlmmScript}::burn_position`
 
     if (params.rewards_token.length > 0) {
-      args = [
-        tx.object(almmConfig.factory),
-        tx.object(params.pool_id),
-        tx.object(clmmConfigs.global_vault_id),
-        tx.object(params.position_id),
-        tx.object(CLOCK_ADDRESS),
-      ]
+      args = [tx.object(params.pool_id), tx.object(clmmConfigs.global_vault_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
       target = `${integrate.published_at}::${AlmmScript}::burn_position_reward${params.rewards_token.length}`
     }
 
@@ -583,22 +578,14 @@ export class AlmmModule implements IModule {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { integrate, clmm_pool, almm_pool } = this.sdk.sdkOptions
+    const { integrate, clmm_pool } = this.sdk.sdkOptions
     const clmmConfigs = getPackagerConfigs(clmm_pool)
-    const almmConfig = getPackagerConfigs(almm_pool)
     const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
-    let args = [
-      tx.object(almmConfig.factory),
-      tx.object(params.pool_id),
-      tx.object(params.position_id),
-      tx.pure.u64(params.delta_percentage),
-      tx.object(CLOCK_ADDRESS),
-    ]
+    let args = [tx.object(params.pool_id), tx.object(params.position_id), tx.pure.u64(params.delta_percentage), tx.object(CLOCK_ADDRESS)]
     let target = `${integrate.published_at}::${AlmmScript}::shrink_position`
 
     if (params.rewards_token.length > 0) {
       args = [
-        tx.object(almmConfig.factory),
         tx.object(params.pool_id),
         tx.object(clmmConfigs.global_vault_id),
         tx.object(params.position_id),
@@ -616,14 +603,16 @@ export class AlmmModule implements IModule {
     return tx
   }
 
+
   async collectFeeAndRewardList(paramsList: AlmmCollectRewardParams[]): Promise<Transaction> {
     let tx = new Transaction()
     for (let index = 0; index < paramsList.length; index++) {
-      const params = paramsList[index]
+      const params = paramsList[index];
       tx = await this.collectFeeAndReward(params)
     }
     return tx
   }
+
 
   async collectFeeAndReward(params: AlmmCollectRewardParams & AlmmCollectFeeParams, tx?: Transaction): Promise<Transaction> {
     if (!tx) {
@@ -640,12 +629,10 @@ export class AlmmModule implements IModule {
     const tx = transaction || new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { integrate, clmm_pool, almm_pool } = this.sdk.sdkOptions
+    const { integrate, clmm_pool } = this.sdk.sdkOptions
     const clmmConfigs = getPackagerConfigs(clmm_pool)
-    const almmConfig = getPackagerConfigs(almm_pool)
     const typeArguments = [params.coin_a, params.coin_b, ...params.rewards_token]
     const args = [
-      tx.object(almmConfig.factory),
       tx.object(params.pool_id),
       tx.object(clmmConfigs.global_vault_id),
       tx.object(params.position_id),
@@ -669,10 +656,9 @@ export class AlmmModule implements IModule {
     const tx = transaction || new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { integrate, almm_pool } = this.sdk.sdkOptions
-    const almmConfig = getPackagerConfigs(almm_pool)
+    const { integrate } = this.sdk.sdkOptions
     const typeArguments = [params.coin_a, params.coin_b]
-    const args = [tx.object(almmConfig.factory), tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
+    const args = [tx.object(params.pool_id), tx.object(params.position_id), tx.object(CLOCK_ADDRESS)]
     const target = `${integrate.published_at}::${AlmmScript}::collect_fees`
 
     tx.moveCall({
@@ -732,9 +718,8 @@ export class AlmmModule implements IModule {
     const tx = new Transaction()
     tx.setSender(this.sdk.senderAddress)
 
-    const { clmm_pool, almm_pool, integrate } = this.sdk.sdkOptions
+    const { clmm_pool, integrate } = this.sdk.sdkOptions
     const { global_config_id } = getPackagerConfigs(clmm_pool)
-    const almmConfig = getPackagerConfigs(almm_pool)
 
     const typeArguments = [params.coinTypeA, params.coinTypeB]
 
@@ -758,7 +743,6 @@ export class AlmmModule implements IModule {
     )
 
     const args = [
-      tx.object(almmConfig.factory),
       tx.object(params.pair),
       tx.object(global_config_id),
       primaryCoinInputA.targetCoin,
@@ -882,6 +866,31 @@ export class AlmmModule implements IModule {
 
   /**
    * Gets a list of positions for the given account address.
+   * @param positionId The account address to get positions for.
+   * @param assignPoolIds An array of pool IDs to filter the positions by.
+   * @returns array of Position objects.
+   */
+  async getUserPositionById(positionId: string, showDisplay = true): Promise<AlmmPositionInfo[]> {
+    let allPosition = []
+    const ownerRes = await this._sdk.fullClient.getObject({
+      id: positionId,
+      options: { showContent: true, showType: true, showDisplay, showOwner: true },
+    })
+    if (ownerRes.data) {
+      const type = extractStructTagFromType(ownerRes.data.type!)
+      if (type.full_address === this.buildPositionType()) {
+        const position = this.buildPosition(ownerRes)
+        const cacheKey = `${position.pos_object_id}_getPositionList`
+        this.updateCache(cacheKey, position, cacheTime24h)
+        allPosition.push(position)
+      }
+      return await this.getUserPositionInfo(allPosition)
+    }
+    return []
+  }
+
+  /**
+   * Gets a list of positions for the given account address.
    * @param accountAddress The account address to get positions for.
    * @param assignPoolIds An array of pool IDs to filter the positions by.
    * @param showDisplay When some testnet rpc nodes can't return object's display data, you can set this option to false, avoid returning errors. Default set true.
@@ -903,7 +912,7 @@ export class AlmmModule implements IModule {
         const cacheKey = `${position.pos_object_id}_getPositionList`
         this.updateCache(cacheKey, position, cacheTime24h)
         if (hasAssignPoolIds) {
-          if (assignPoolIds.includes(position.pos_object_id)) {
+          if (assignPoolIds.includes(position.pool)) {
             allPosition.push(position)
           }
         } else {
@@ -911,7 +920,10 @@ export class AlmmModule implements IModule {
         }
       }
     }
+    return this.getUserPositionInfo(allPosition)
+  }
 
+  private async getUserPositionInfo(allPosition: AlmmPosition[]): Promise<AlmmPositionInfo[]> {
     const poolMap = new Set<string>()
     for (const item of allPosition) {
       poolMap.add(item.pool)
@@ -1039,7 +1051,9 @@ export class AlmmModule implements IModule {
         liquidity: positionLiquidity!,
         rewards: positionRewards || { position_id: item.pos_object_id, reward: [], amount: [] },
         fees: positionFees!,
-        contractPool: pool,
+        contractPool: pool!,
+        coin_type_a: pool?.coin_a || '',
+        coin_type_b: pool?.coin_b || ''
       })
     }
 
