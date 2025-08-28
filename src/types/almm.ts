@@ -262,10 +262,9 @@ export type AlmmPositionInfo = {
   liquidity: EventPositionLiquidity
   rewards: AlmmEventEarnedRewards
   fees: AlmmEventEarnedFees
-  contractPool: AlmmPoolInfo;
-  coin_type_a: string;
-  coin_type_b: string;
-
+  contractPool: AlmmPoolInfo
+  coin_type_a: string
+  coin_type_b: string
 }
 
 export type MintByStrategyParams = {

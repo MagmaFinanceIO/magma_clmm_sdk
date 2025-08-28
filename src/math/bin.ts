@@ -7,6 +7,7 @@ export class BinMath {
     const price = new Decimal(get_price_x128_from_real_id(binId, binStep))
     return price.div(twoDec.pow(128)).mul(Decimal.pow(10, decimalsA - decimalsB))
   }
+
   static getBinIdFromPrice(price: string, binStep: number, decimalsA: number, decimalsB: number) {
     const twoDec = new Decimal(2)
     const tenDec = new Decimal(10)

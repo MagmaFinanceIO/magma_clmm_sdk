@@ -7,6 +7,7 @@ import {
   get_storage_id_from_real_id,
 } from 'calc_almm/pkg/pkg-bundler/calc_almm'
 import Decimal from 'decimal.js'
+import BN from 'bn.js'
 import { BinMath, MathUtil } from '../math'
 import {
   EventBin,
@@ -52,7 +53,6 @@ import { CLOCK_ADDRESS, AlmmScript, getPackagerConfigs, SuiResource, Rewarder } 
 import { MagmaClmmSDK } from '../sdk'
 import { IModule } from '../interfaces/IModule'
 import { ClmmpoolsError, PositionErrorCode, TypesErrorCode } from '../errors/errors'
-import BN from 'bn.js'
 
 export class AlmmModule implements IModule {
   protected _sdk: MagmaClmmSDK
@@ -866,7 +866,7 @@ export class AlmmModule implements IModule {
    * @returns array of Position objects.
    */
   async getUserPositionById(positionId: string, showDisplay = true): Promise<AlmmPositionInfo[]> {
-    let allPosition = []
+    const allPosition = []
     const ownerRes = await this._sdk.fullClient.getObject({
       id: positionId,
       options: { showContent: true, showType: true, showDisplay, showOwner: true },
