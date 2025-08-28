@@ -1,5 +1,6 @@
-use alloy_primitives::U256;
 use std::str::FromStr;
+
+use alloy_primitives::U256;
 
 use crate::bit_math;
 
@@ -23,7 +24,7 @@ fn max_u256() -> U256 {
 pub fn from_u128x128(x: U256) -> (u128, u128) {
     (
         (x >> U256::from(128)).to::<u128>(),
-        (x & (U256::from(1) << U256::from(128) - U256::from(1))).to::<u128>(),
+        (x & ((U256::from(1) << U256::from(128)) - U256::from(1))).to::<u128>(),
     )
 }
 
@@ -41,7 +42,7 @@ pub fn log2(mut x: U256) -> (U256, bool) {
     };
 
     // drop the least significant bit of the fraction part
-    x = x >> 1;
+    x >>= 1;
 
     let sign_positive = if x >= log_scale() {
         true
@@ -58,10 +59,10 @@ pub fn log2(mut x: U256) -> (U256, bool) {
         while delta > U256::ZERO {
             y = (y * y) >> LOG_SCALE_OFFSET;
             if y >= (U256::from(1) << (LOG_SCALE_OFFSET + 1)) {
-                result = result + delta;
-                y = y >> 1;
+                result += delta;
+                y >>= 1;
             };
-            delta = delta >> 1;
+            delta >>= 1;
         }
     };
 
@@ -79,7 +80,7 @@ pub fn pow(x: U256, y: i32) -> U256 {
         return U256::from(1) << FIX_POINT_BITS;
     };
 
-    let abs_y = y.abs() as u128;
+    let abs_y = y.unsigned_abs() as u128;
     if y.is_negative() {
         invert = !invert;
     };

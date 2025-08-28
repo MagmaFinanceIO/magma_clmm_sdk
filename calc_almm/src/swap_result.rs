@@ -1,18 +1,42 @@
-use wasm_bindgen::prelude::*;
+use std::collections::HashMap;
 
 use alloy_primitives::U256;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize, de};
+use serde_json::Value;
+use wasm_bindgen::prelude::*;
 
 use crate::{constants, price, uint_safe};
 
 #[wasm_bindgen]
-pub struct DlmmPair {
-    params: DlmmPairParameter,
-    bins: HashMap<u32, Bin>,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AlmmPair {
+    params: AlmmPairParameter,
+    bins: Vec<Bin>,
     bin_step: u16,
 }
 
+pub struct AlmmPairInner {
+    pub params: AlmmPairParameter,
+    pub bins: HashMap<u32, Bin>,
+    pub bin_step: u16,
+}
+
+impl From<AlmmPair> for AlmmPairInner {
+    fn from(pair: AlmmPair) -> Self {
+        let mut bins = HashMap::new();
+        for bin in pair.bins {
+            bins.insert(bin.storage_id, bin);
+        }
+        Self {
+            params: pair.params,
+            bins,
+            bin_step: pair.bin_step,
+        }
+    }
+}
+
 #[wasm_bindgen]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwapOutResult {
     pub amount_in_left: u64,
     pub amount_out: u64,
@@ -20,6 +44,7 @@ pub struct SwapOutResult {
 }
 
 #[wasm_bindgen]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwapInResult {
     pub amount_in: u64,
     pub amount_out_left: u64,
@@ -27,13 +52,12 @@ pub struct SwapInResult {
 }
 
 #[wasm_bindgen]
-pub fn get_swap_out(
-    pair: &DlmmPair,
-    amount_in: u64,
-    swap_for_y: bool,
-    timestamp_ms: u64,
-) -> SwapOutResult {
+pub fn get_swap_out(pair: &str, amount_in: u64, swap_for_y: bool, timestamp_ms: u64) -> JsValue {
     let mut amount_in_left = amount_in;
+
+    let pair: AlmmPair = serde_json::from_str(pair).unwrap();
+    let pair: AlmmPairInner = pair.into();
+
     let mut params = pair.params.clone();
     let mut id = params.active_index;
 
@@ -73,13 +97,13 @@ pub fn get_swap_out(
             );
 
             if amounts_in_with_fees_x > 0 && swap_for_y {
-                amount_in_left = amount_in_left - amounts_in_with_fees_x;
-                amount_out = amount_out + amounts_out_of_bin_y;
-                fee = fee + total_fees_x;
+                amount_in_left -= amounts_in_with_fees_x;
+                amount_out += amounts_out_of_bin_y;
+                fee += total_fees_x;
             } else if amounts_in_with_fees_y > 0 && !swap_for_y {
-                amount_in_left = amount_in_left - amounts_in_with_fees_y;
-                amount_out = amount_out + amounts_out_of_bin_x;
-                fee = fee + total_fees_y;
+                amount_in_left -= amounts_in_with_fees_y;
+                amount_out += amounts_out_of_bin_x;
+                fee += total_fees_y;
             };
         };
 
@@ -94,22 +118,21 @@ pub fn get_swap_out(
         };
     }
 
-    SwapOutResult {
+    // 转换为 JavaScript 对象
+    serde_wasm_bindgen::to_value(&SwapOutResult {
         amount_in_left,
         amount_out,
         fee,
-    }
+    })
+    .unwrap()
 }
 
 #[wasm_bindgen]
-pub fn get_swap_in(
-    pair: &DlmmPair,
-    amount_out: u64,
-    swap_for_y: bool,
-    timestamp_ms: u64,
-) -> SwapInResult {
-    let mut params = pair.params.clone();
+pub fn get_swap_in(pair: &str, amount_out: u64, swap_for_y: bool, timestamp_ms: u64) -> JsValue {
+    let pair: AlmmPair = serde_json::from_str(pair).unwrap();
+    let pair: AlmmPairInner = pair.into();
 
+    let mut params = pair.params.clone();
     let mut amount_out_left = amount_out;
     let mut id = params.active_index;
 
@@ -147,8 +170,8 @@ pub fn get_swap_in(
             let fee_amount = fee::get_fee_amount_from(amount_in_without_fee, total_fee);
 
             amount_in = amount_in + amount_in_without_fee + fee_amount;
-            amount_out_left = amount_out_left - amount_out_of_bin;
-            fee = fee + fee_amount;
+            amount_out_left -= amount_out_of_bin;
+            fee += fee_amount;
         };
 
         if amount_out_left == 0 {
@@ -162,14 +185,16 @@ pub fn get_swap_in(
         };
     }
 
-    SwapInResult {
+    // 转换为 JavaScript 对象
+    serde_wasm_bindgen::to_value(&SwapInResult {
         amount_in,
         amount_out_left,
         fee,
-    }
+    })
+    .unwrap()
 }
 
-impl DlmmPair {
+impl AlmmPairInner {
     fn get_next_non_empty_bin_internal(&self, swap_for_y: bool, id: u32) -> (u32, bool) {
         if swap_for_y {
             self.find_first_left(id)
@@ -199,36 +224,84 @@ impl DlmmPair {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bin {
-    storage_id: u32,
-    price_q128: U256,
-    reserve_x: u64,
-    reserve_y: u64,
+    pub storage_id: u32,
+    pub price_q128: String,
+    #[serde(deserialize_with = "deserialize_u64")]
+    pub reserve_x: u64,
+    #[serde(deserialize_with = "deserialize_u64")]
+    pub reserve_y: u64,
 
-    fee_growth_x: U256,
-    fee_growth_y: U256,
-    rewarder_growth: Vec<U256>,
-    distribution_growth: U256,
+    pub fee_growth_x: String,
+    pub fee_growth_y: String,
+    pub distribution_growth: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct DlmmPairParameter {
-    base_factor: u16,                // 16bit, basis_point
-    filter_period: u16,              // 12bit
-    decay_period: u16,               // 12bit
-    reduction_factor: u16,           // 14bit
-    variable_fee_control: u32,       // 24bit, basis_point
-    protocol_share: u16,             // 14bit
-    max_volatility_accumulator: u32, // 20bit, basis_point
-    volatility_accumulator: u32,     // 20bit, basis_point
-    volatility_reference: u32,       // 20bit
-    index_reference: u32,            // 24bit
-    time_of_last_update: u64,
-    oracle_index: u16,
-    active_index: u32, // 24bit
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct RewardGrowth {
+    pub contents: Vec<RewardGrowthContents>,
 }
 
-impl DlmmPairParameter {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RewardGrowthContents {
+    key: RewardGrowthContentsKey,
+    value: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RewardGrowthContentsKey {
+    name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct BinInner {
+    pub storage_id: u32,
+    pub price_q128: U256,
+    pub reserve_x: u64,
+    pub reserve_y: u64,
+
+    pub fee_growth_x: U256,
+    pub fee_growth_y: U256,
+    pub distribution_growth: U256,
+}
+
+impl From<Bin> for BinInner {
+    fn from(bin: Bin) -> Self {
+        Self {
+            storage_id: bin.storage_id,
+            price_q128: bin.price_q128.parse().unwrap(),
+            reserve_x: bin.reserve_x,
+            reserve_y: bin.reserve_y,
+
+            fee_growth_x: bin.fee_growth_x.parse().unwrap(),
+            fee_growth_y: bin.fee_growth_y.parse().unwrap(),
+            distribution_growth: bin.distribution_growth.parse().unwrap(),
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AlmmPairParameter {
+    pub base_factor: u32,          // 32bit, basis_point
+    pub filter_period: u16,        // 12bit
+    pub decay_period: u16,         // 12bit
+    pub reduction_factor: u16,     // 14bit
+    pub variable_fee_control: u32, // 24bit, basis_point
+    pub protocol_share: u16,       // 14bit
+    pub protocol_variable_share: u16,
+    pub max_volatility_accumulator: u32, // 20bit, basis_point
+    pub volatility_accumulator: u32,     // 20bit, basis_point
+    pub volatility_reference: u32,       // 20bit
+    pub index_reference: u32,            // 24bit
+    #[serde(deserialize_with = "deserialize_u64")]
+    pub time_of_last_update: u64,
+    pub oracle_index: u16,
+    pub active_index: u32, // 24bit
+}
+
+impl AlmmPairParameter {
     pub fn get_total_fee(&self, bin_step: u16) -> u64 {
         self.get_base_fee(bin_step) + self.get_variable_fee(bin_step)
     }
@@ -274,11 +347,7 @@ impl DlmmPairParameter {
 
     fn update_volatility_accumulator(&mut self, active_id: u32) {
         let id_reference = self.index_reference;
-        let delta_id = if active_id > id_reference {
-            active_id - id_reference
-        } else {
-            id_reference - active_id
-        };
+        let delta_id = active_id.abs_diff(id_reference);
         let mut vol_acc =
             self.volatility_reference + delta_id * (constants::BASIS_POINT_MAX as u32);
         let max_vol_acc = self.max_volatility_accumulator;
@@ -393,14 +462,14 @@ mod bin {
             (0, amount_in, amount_out, 0, 0, fee)
         };
 
-        return (
+        (
             amounts_in_with_fees_x,
             amounts_in_with_fees_y,
             amounts_out_of_bin_x,
             amounts_out_of_bin_y,
             fee_x,
             fee_y,
-        );
+        )
     }
 
     pub fn get_liquidity(amount_x: u64, amount_y: u64, price_q128: U256) -> U256 {
@@ -414,7 +483,7 @@ mod bin {
         };
         if amount_y > 0 {
             let amount_y_256 = U256::from(amount_y) << constants::SCALE_OFFSET;
-            liquidity = liquidity + amount_y_256;
+            liquidity += amount_y_256;
             assert!(liquidity >= amount_y_256, "ErrLiquidityOverflow");
         };
         liquidity
@@ -453,5 +522,40 @@ mod fee {
 
     pub fn verify_fee(fee: u64) {
         assert!(fee <= constants::MAX_FEE, "ErrFeeTooLarge");
+    }
+}
+
+pub fn deserialize_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+    match value {
+        Value::Number(num) => {
+            if let Some(n) = num.as_u64() {
+                Ok(n)
+            } else {
+                Err(serde::de::Error::custom("Number is not a u64"))
+            }
+        }
+        Value::String(s) => s.parse::<u64>().map_err(serde::de::Error::custom),
+        _ => Err(serde::de::Error::custom("Expected u64 or string")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::swap_result::AlmmPair;
+
+    #[test]
+    fn deserialize_pair() {
+        let pair_str = r#"{"params":{"active_index":8397927,"base_factor":100000,"decay_period":600,"filter_period":30,"index_reference":8397927,"max_volatility_accumulator":1000000,"oracle_index":0,"protocol_share":1000,"protocol_variable_share":1000,"reduction_factor":5000,"time_of_last_update":"1754900084","variable_fee_control":80000000,"volatility_accumulator":0,"volatility_reference":0},"bins":[{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3768246633273078798697601732675797893713015","reserve_x":"0","reserve_y":"6337035218","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397925,"real_bin_id":9317},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3772014879906351877496299334408473781216772","reserve_x":"0","reserve_y":"7303502761","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397926,"real_bin_id":9318},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"69939395467293378764464362697779","fee_growth_y":"0","fee_x":"2395","fee_y":"0","price_q128":"3775786894786258229373795633742882229168175","reserve_x":"292841","reserve_y":"8403240371","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397927,"real_bin_id":9319},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"13820439444612931826627696963680","fee_growth_y":"528133168131016759986463295812","fee_x":"644","fee_y":"0","price_q128":"3779562681681044487603169429376625124584583","reserve_x":"1440665","reserve_y":"0","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397928,"real_bin_id":9320},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3783342244362725532090772598806001709080349","reserve_x":"1048060","reserve_y":"0","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397929,"real_bin_id":9321},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3787125586607088257622863371404807728112884","reserve_x":"656235","reserve_y":"0","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397930,"real_bin_id":9322},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3790912712193695345880486234776212543652150","reserve_x":"568824","reserve_y":"0","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397931,"real_bin_id":9323}],"bin_step":10}"#;
+
+        let pair: AlmmPair = serde_json::from_str(pair_str).unwrap();
+
+        // change time_of_last_update to u64
+        let pair_str = r#"{"params":{"active_index":8397927,"base_factor":100000,"decay_period":600,"filter_period":30,"index_reference":8397927,"max_volatility_accumulator":1000000,"oracle_index":0,"protocol_share":1000,"protocol_variable_share":1000,"reduction_factor":5000,"time_of_last_update":1754900084,"variable_fee_control":80000000,"volatility_accumulator":0,"volatility_reference":0},"bins":[{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3768246633273078798697601732675797893713015","reserve_x":"0","reserve_y":"6337035218","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397925,"real_bin_id":9317},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3772014879906351877496299334408473781216772","reserve_x":"0","reserve_y":"7303502761","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397926,"real_bin_id":9318},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"69939395467293378764464362697779","fee_growth_y":"0","fee_x":"2395","fee_y":"0","price_q128":"3775786894786258229373795633742882229168175","reserve_x":"292841","reserve_y":"8403240371","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397927,"real_bin_id":9319},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"13820439444612931826627696963680","fee_growth_y":"528133168131016759986463295812","fee_x":"644","fee_y":"0","price_q128":"3779562681681044487603169429376625124584583","reserve_x":"1440665","reserve_y":"0","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397928,"real_bin_id":9320},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3783342244362725532090772598806001709080349","reserve_x":"1048060","reserve_y":"0","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397929,"real_bin_id":9321},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3787125586607088257622863371404807728112884","reserve_x":"656235","reserve_y":"0","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397930,"real_bin_id":9322},{"distribution_growth":"0","distribution_last_updated":"0","fee_growth_x":"0","fee_growth_y":"0","fee_x":"0","fee_y":"0","price_q128":"3790912712193695345880486234776212543652150","reserve_x":"568824","reserve_y":"0","rewarder_growth":{"contents":[]},"staked_liquidity":"0","staked_lp_amount":"0","storage_id":8397931,"real_bin_id":9323}],"bin_step":10}"#;
+
+        let pair: AlmmPair = serde_json::from_str(pair_str).unwrap();
     }
 }

@@ -5,7 +5,7 @@ import {
   get_real_id,
   get_real_id_from_price_x128,
   get_storage_id_from_real_id,
-} from '@magmaprotocol/calc_dlmm'
+} from 'calc_almm/pkg/pkg-bundler/calc_dlmm'
 import Decimal from 'decimal.js'
 import BN from 'bn.js'
 import { BinMath, MathUtil } from '../math'
@@ -35,7 +35,9 @@ import {
   AlmmPositionInfo,
   MintByStrategyParams,
   RaiseByStrategyParams,
+  EventCreatePair,
 } from '../types/almm'
+import { DataPage, PaginationArgs } from '../types/sui'
 import {
   CachedContent,
   cacheTime24h,
@@ -63,6 +65,44 @@ export class AlmmModule implements IModule {
 
   get sdk() {
     return this._sdk
+  }
+
+  async getPools(paginationArgs: PaginationArgs = 'all', forceRefresh = false): Promise<EventCreatePair[]> {
+    const { package_id } = this._sdk.sdkOptions.almm_pool
+
+    const allPools: EventCreatePair[] = []
+    const cacheKey = `${package_id}_getInitCreatePairEvent`
+    const cacheData = this.getCache<EventCreatePair[]>(cacheKey, forceRefresh)
+
+    if (cacheData !== undefined) {
+      allPools.push(...cacheData)
+    }
+
+    if (allPools.length === 0) {
+      try {
+        const moveEventType = `${package_id}::almm_pair::EventCreatePair`
+        const objects = await this._sdk.fullClient.queryEventsByPage({ MoveEventType: moveEventType }, paginationArgs)
+        const dataPage: DataPage<EventCreatePair> = {
+          data: [],
+          hasNextPage: false,
+        }
+
+        dataPage.hasNextPage = objects.hasNextPage
+        dataPage.nextCursor = objects.nextCursor
+
+        objects.data.forEach((object: any) => {
+          const fields = object.parsedJson
+          if (fields) {
+            allPools.push(fields)
+          }
+        })
+
+        this.updateCache(cacheKey, allPools, cacheTime24h)
+      } catch (error) {
+        console.log('getCreatePairEvents', error)
+      }
+    }
+    return allPools
   }
 
   async getPoolInfo(pools: string[]): Promise<AlmmPoolInfo[]> {
@@ -112,6 +152,7 @@ export class AlmmModule implements IModule {
         coinAmountB: fields.reserve_y,
         liquidity: fields.liquidity,
         rewarder_infos: rewarders,
+        params: fields.params.fields,
       }
       poolList.push(poolInfo)
       this.updateCache(`${fields.id.id}_getPoolObject`, poolInfo, cacheTime24h)
@@ -157,6 +198,7 @@ export class AlmmModule implements IModule {
       time_of_last_update: 0,
       oracle_index: 0,
       active_index: 0,
+      protocol_variable_share: 0,
     }
     simulateRes.events?.forEach((item: any) => {
       console.log(extractStructTagFromType(item.type).name)
@@ -842,6 +884,7 @@ export class AlmmModule implements IModule {
    * Gets a list of positions for the given account address.
    * @param accountAddress The account address to get positions for.
    * @param assignPoolIds An array of pool IDs to filter the positions by.
+   * @param showDisplay When some testnet rpc nodes can't return object's display data, you can set this option to false, avoid returning errors. Default set true.
    * @returns array of Position objects.
    */
   async getUserPositions(accountAddress: string, assignPoolIds: string[] = [], showDisplay = true): Promise<AlmmPositionInfo[]> {

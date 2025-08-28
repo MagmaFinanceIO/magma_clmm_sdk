@@ -1,5 +1,6 @@
-use alloy_primitives::U256;
 use std::str::FromStr;
+
+use alloy_primitives::U256;
 
 fn u256_max() -> U256 {
     U256::from_str("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF").unwrap()
@@ -37,36 +38,36 @@ fn u4_max() -> U256 {
 pub fn most_significant_bit(mut bits: U256) -> u8 {
     let mut msb = 0;
     if bits > u128_max() {
-        bits = bits >> 128;
+        bits >>= 128;
         msb = 128;
     };
     if bits > u64_max() {
-        bits = bits >> 64;
-        msb = msb + 64;
+        bits >>= 64;
+        msb += 64;
     };
     if bits > u32_max() {
-        bits = bits >> 32;
-        msb = msb + 32;
+        bits >>= 32;
+        msb += 32;
     };
     if bits > u16_max() {
-        bits = bits >> 16;
-        msb = msb + 16;
+        bits >>= 16;
+        msb += 16;
     };
     if bits > u8_max() {
-        bits = bits >> 8;
-        msb = msb + 8;
+        bits >>= 8;
+        msb += 8;
     };
     if bits > u4_max() {
-        bits = bits >> 4;
-        msb = msb + 4;
+        bits >>= 4;
+        msb += 4;
     };
     if bits > U256::from_str("0x3").unwrap() {
-        bits = bits >> 2;
-        msb = msb + 2;
+        bits >>= 2;
+        msb += 2;
     };
     if bits > U256::from_str("0x1").unwrap() {
-        msb = msb + 1;
+        msb += 1;
     };
 
-    return msb;
+    msb
 }
